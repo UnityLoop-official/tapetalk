@@ -56,7 +56,7 @@ flowchart LR
 - **Big purple "Add songs" button**, always visible in the playlist.
 - **Remove songs** from the playlist by swiping them to the left (or with
   the heart): a dialog asks for confirmation, and **Undo** puts them back.
-  <br><img src="docs/screenshots/remove.png" alt="Swipe to remove a song" width="180">
+  <br><img src="docs/screenshots/remove.png" alt="Confirmation before removing a song" width="180">
 - **Import a playlist from Spotify** by pasting its link (public playlists).
   Songs without synced lyrics are skipped. **Shazam** songs can be imported
   too: in Shazam, connect Spotify and your Shazams are saved in the Spotify
