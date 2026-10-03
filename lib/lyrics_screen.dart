@@ -5,6 +5,7 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import 'lyrics_service.dart';
 import 'song.dart';
+import 'word_timing_service.dart';
 
 class LyricsScreen extends StatefulWidget {
   final Song song;
@@ -31,6 +32,10 @@ class _LyricsScreenState extends State<LyricsScreen> {
   /// Parole già cantate nella riga corrente (diventano viola).
   int _sung = 0;
   bool _playing = true;
+
+  /// Video nascosto (occhio chiuso): il player continua a suonare ma quasi
+  /// non occupa spazio, così il testo ha più posto e niente distrae.
+  bool _videoHidden = false;
 
   /// Velocità disponibili: oltre lo 0.75× la voce inizia a suonare innaturale.
   static const _speeds = [1.0, 0.85, 0.75];
@@ -71,6 +76,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
           for (var i = 0; i < lines.length; i++) _estimateWordStarts(lines, i),
         ];
       });
+      _loadRealWordTimes(lines);
       // Le traduzioni mancanti compaiono man mano che arrivano.
       await service.fillTranslations(widget.song, lines, () {
         if (mounted) setState(() {});
@@ -106,6 +112,37 @@ class _LyricsScreenState extends State<LyricsScreen> {
       acc += w;
     }
     return starts;
+  }
+
+  /// Se il video ha i sottotitoli automatici di YouTube, sostituisce la
+  /// stima con i tempi veri delle parole.
+  Future<void> _loadRealWordTimes(List<LyricLine> lines) async {
+    try {
+      final offset = Duration(
+        milliseconds: (widget.song.offsetSeconds * 1000).round(),
+      );
+      final timed = [
+        for (final w in await WordTimingService.load(widget.song.youtubeId))
+          TimedWord(w.word, w.time - offset),
+      ];
+      if (timed.isEmpty || !mounted || _lines != lines) return;
+      setState(() {
+        _wordStarts = [
+          for (var i = 0; i < lines.length; i++)
+            WordTimingService.align(
+              words: _words(lines[i].english),
+              lineStart: lines[i].time,
+              lineEnd: i + 1 < lines.length
+                  ? lines[i + 1].time
+                  : lines[i].time + const Duration(seconds: 10),
+              estimate: _wordStarts[i],
+              timed: timed,
+            ),
+        ];
+      });
+    } catch (_) {
+      // Senza sottotitoli resta la stima.
+    }
   }
 
   static List<String> _words(String line) =>
@@ -197,15 +234,28 @@ class _LyricsScreenState extends State<LyricsScreen> {
           '${widget.song.artist} – ${widget.song.title}',
           style: const TextStyle(fontSize: 16),
         ),
+        // Nella barra e non sopra il video: il player di YouTube copre i
+        // pulsanti disegnati sopra di lui.
+        actions: [
+          IconButton(
+            tooltip: _videoHidden ? 'Show video' : 'Hide video',
+            icon: Icon(_videoHidden ? Icons.visibility_off : Icons.visibility),
+            onPressed: () => setState(() => _videoHidden = !_videoHidden),
+          ),
+        ],
       ),
       // SafeArea: i controlli restano sopra la barra di navigazione di Android.
       body: SafeArea(
         top: false,
         child: Column(
           children: [
-            // Il player deve restare a schermo per funzionare: lo teniamo piccolo.
-            SizedBox(
-              height: 90,
+            // Il player deve restare a schermo per funzionare. I termini delle
+            // API di YouTube chiedono almeno 200x200: in 16:9 viene 356x200.
+            // Con l'occhio chiuso si riduce a una riga di 1 pixel: il player
+            // di YouTube si disegna sopra a tutto, quindi non si può coprire.
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: _videoHidden ? 1 : 200,
               child: Center(
                 child: AspectRatio(
                   aspectRatio: 16 / 9,

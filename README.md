@@ -56,8 +56,12 @@ flowchart LR
   by matching the song's duration.
 - **Big purple "Add songs" button**, always visible in the playlist.
 - **Lyrics in time with the music**: the current line is highlighted and
-  **each word turns purple as it is sung**. Line timings come from LRCLIB;
-  word timings are estimated from the length of the words.
+  **each word turns purple as it is sung**. Line timings come from LRCLIB.
+  When the video has YouTube's automatic English captions, each word uses its
+  real timing from them; otherwise word timings are estimated from the length
+  of the words.
+- **Eye button** above the video to hide it while singing along: the music
+  keeps playing and the lyrics get more room.
 - **Italian translation** under every line.
 - Pause / Play, **Restart** and playback **speed** (1× · 0.85× · 0.75×)
   without distorting the voice.
@@ -78,6 +82,7 @@ Italian.
 |---|---|
 | Song search and synced lyrics | [LRCLIB](https://lrclib.net) |
 | Video and audio | YouTube: search with [youtube_explode_dart](https://pub.dev/packages/youtube_explode_dart), playback with the embedded player |
+| Word timings | YouTube's automatic captions, when available |
 | Translations | [MyMemory](https://mymemory.translated.net) |
 | Covers | iTunes Search API |
 
@@ -103,6 +108,8 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.8.0 | Real word timings from YouTube's automatic captions; eye button to hide the video |
+| 1.7.3 | Bigger video player (356×200), as required by YouTube |
 | 1.7.2 | Old Musixmatch translations deleted from the phone |
 | 1.7.1 | Musixmatch removed: translations only from MyMemory |
 | 1.7.0 | Whole interface in English |
@@ -122,6 +129,7 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 - `lib/song.dart` – song model and suggested songs
 - `lib/lyrics_screen.dart` – lyrics in time, purple words and controls
 - `lib/lyrics_service.dart` – lyrics and translations
+- `lib/word_timing_service.dart` – real word timings from YouTube's automatic captions
 - `lib/cover_service.dart` – covers
 - `lib/mouth_logo.dart` – mouth-box logo with the song lines
 - `test/icon_render_test.dart` – generates the app icon from the logo
