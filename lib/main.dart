@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'cover_service.dart';
 import 'favorites_store.dart';
@@ -107,6 +108,22 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ),
+        // Numero di versione, per sapere quale c'è su ogni telefono.
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: FutureBuilder(
+              future: PackageInfo.fromPlatform(),
+              builder: (context, snap) => Text(
+                snap.hasData
+                    ? 'v${snap.data!.version} (${snap.data!.buildNumber})'
+                    : '',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.black54, fontSize: 13),
               ),
             ),
           ),
