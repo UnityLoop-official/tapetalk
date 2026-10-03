@@ -5,8 +5,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'cover_service.dart';
 import 'favorites_store.dart';
-import 'logo.dart';
 import 'lyrics_screen.dart';
+import 'mouth_logo.dart';
 import 'song.dart';
 import 'song_search.dart';
 
@@ -63,8 +63,8 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  RotatingLogo(
-                    size: 200,
+                  MouthLogo(
+                    size: 260,
                     color: Colors.black,
                     background: scheme.primary,
                   ),
