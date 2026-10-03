@@ -50,18 +50,19 @@ flowchart LR
 
 - **My playlist** (*My favorites*): everyone builds their own playlist, saved
   on the phone. When the list is empty, the app invites you to create one.
-  <br><img src="docs/screenshots/empty.png" alt="Empty playlist" width="180">
 - **Search for new songs** by title or artist and add them with the heart.
   Only songs with synced lyrics are shown; the right YouTube video is picked
   by matching the song's duration.
 - **Big purple "Add songs" button**, always visible in the playlist.
 - **Remove songs** from the playlist by swiping them to the left, with
   **Undo** to put them back.
+  <br><img src="docs/screenshots/remove.png" alt="Swipe to remove a song" width="180">
 - **Import a playlist from Spotify** by pasting its link (public playlists).
   Songs without synced lyrics are skipped. **Shazam** songs can be imported
   too: in Shazam, connect Spotify and your Shazams are saved in the Spotify
   playlist *My Shazam Tracks*. The import screen shows whether Spotify and
   Shazam are installed on the phone.
+  <br><img src="docs/screenshots/import.png" alt="Import a playlist" width="180">
 - **Lyrics in time with the music**: the current line is highlighted and
   **each word turns purple as it is sung**. Line timings come from LRCLIB.
   When the video has YouTube's automatic English captions, each word uses its
