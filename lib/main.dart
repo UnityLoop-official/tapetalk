@@ -513,7 +513,10 @@ class SongTile extends StatelessWidget {
 class FavoriteButton extends StatelessWidget {
   final Song song;
 
-  const FavoriteButton({super.key, required this.song});
+  /// Chiamato dopo aver tolto la canzone (es. per tornare alla lista).
+  final VoidCallback? onRemoved;
+
+  const FavoriteButton({super.key, required this.song, this.onRemoved});
 
   @override
   Widget build(BuildContext context) {
@@ -529,7 +532,9 @@ class FavoriteButton extends StatelessWidget {
             if (isFavorite && !await _confirmRemove(context, song)) return;
             if (!context.mounted) return;
             final ready = await _readySong(context, song);
-            if (ready != null) await FavoritesStore.toggle(ready);
+            if (ready == null) return;
+            await FavoritesStore.toggle(ready);
+            if (isFavorite) onRemoved?.call();
           },
         );
       },
@@ -548,7 +553,13 @@ class SongScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.black,
-        actions: [FavoriteButton(song: song)],
+        actions: [
+          // Tolta dai preferiti: si torna alla lista con gli altri.
+          FavoriteButton(
+            song: song,
+            onRemoved: () => Navigator.of(context).pop(),
+          ),
+        ],
       ),
       body: Center(
         child: Padding(

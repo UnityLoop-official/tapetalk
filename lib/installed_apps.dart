@@ -10,7 +10,7 @@ enum ExternalApp {
   const ExternalApp(this.package);
 }
 
-/// Controlla se un'app è installata sul telefono e la apre
+/// Controlla se un'app è installata sul telefono, ne dà l'icona e la apre
 /// (codice Android in MainActivity.kt).
 class InstalledApps {
   static const _channel = MethodChannel('tapetalk/apps');
@@ -20,6 +20,10 @@ class InstalledApps {
         'package': app.package,
       }) ??
       false;
+
+  /// L'icona dell'app (PNG), o null se non è installata.
+  static Future<Uint8List?> icon(ExternalApp app) =>
+      _channel.invokeMethod<Uint8List>('icon', {'package': app.package});
 
   static Future<bool> open(ExternalApp app) async =>
       await _channel.invokeMethod<bool>('open', {'package': app.package}) ??

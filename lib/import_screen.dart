@@ -4,9 +4,10 @@ import 'package:flutter/services.dart';
 import 'installed_apps.dart';
 import 'playlist_import.dart';
 
-/// Importa una playlist di Spotify dal suo link. Le canzoni di Shazam si
-/// importano passando da Spotify (playlist "My Shazam Tracks").
-/// Dice se Spotify e Shazam sono installati sul telefono.
+/// Importa canzoni da link incollati: playlist di Spotify e canzoni di
+/// Shazam. Mostra i loghi di Spotify e Shazam e dice se sono installati.
+/// Tutti gli Shazam insieme si importano passando da Spotify ("My Shazam
+/// Tracks").
 class ImportScreen extends StatefulWidget {
   const ImportScreen({super.key});
 
@@ -52,7 +53,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _total = 0;
     });
     try {
-      final r = await PlaylistImport.fromSpotify(
+      final r = await PlaylistImport.fromText(
         _link.text,
         onProgress: (done, total) {
           if (mounted) {
@@ -64,12 +65,14 @@ class _ImportScreenState extends State<ImportScreen> {
         },
       );
       _message =
-          'Added ${r.added} songs from "${r.playlistName}".'
+          'Added ${r.added} ${r.added == 1 ? 'song' : 'songs'} from ${r.source}.'
           '${r.skipped > 0 ? '\n${r.skipped} skipped: no synced lyrics.' : ''}';
     } on FormatException {
-      _message = "That doesn't look like a Spotify playlist link.";
+      _message =
+          'Paste a Spotify playlist link, Shazam song links, or one song per '
+          'line as Artist - Title.';
     } catch (_) {
-      _message = "Couldn't import the playlist. Is it public?";
+      _message = "Couldn't import. Is the Spotify playlist public?";
     }
     if (mounted) setState(() => _importing = false);
   }
@@ -80,12 +83,13 @@ class _ImportScreenState extends State<ImportScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Import a playlist'),
+        title: const Text('Import songs'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           _AppStatus(
+            app: ExternalApp.spotify,
             name: 'Spotify',
             installed: _hasSpotify,
             whenInstalled:
@@ -104,8 +108,10 @@ class _ImportScreenState extends State<ImportScreen> {
           TextField(
             controller: _link,
             enabled: !_importing,
+            minLines: 1,
+            maxLines: 4,
             decoration: InputDecoration(
-              hintText: 'https://open.spotify.com/playlist/…',
+              hintText: 'Spotify or Shazam links, or Artist - Title lines',
               border: const OutlineInputBorder(),
               suffixIcon: IconButton(
                 tooltip: 'Paste',
@@ -154,13 +160,23 @@ class _ImportScreenState extends State<ImportScreen> {
           const Divider(),
           const SizedBox(height: 16),
           _AppStatus(
+            app: ExternalApp.shazam,
             name: 'Shazam',
             installed: _hasShazam,
             whenInstalled:
-                'In Shazam, connect Spotify (Settings → Spotify): your Shazams '
-                'are saved in the Spotify playlist "My Shazam Tracks". Import '
-                'that playlist here.',
-            whenMissing: "Shazam isn't installed on this phone.",
+                'In Shazam, open a song and tap Share → Copy link, then paste '
+                'it above: you can paste several links at once.\n\n'
+                'To import all your Shazams together, connect Spotify in '
+                'Shazam (Settings → Spotify): they are saved in the Spotify '
+                'playlist "My Shazam Tracks". Import that playlist above.',
+            whenMissing:
+                "Shazam isn't installed on this phone. You can still paste "
+                'links of Shazam songs.',
+            action: TextButton.icon(
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Open Shazam'),
+              onPressed: () => InstalledApps.open(ExternalApp.shazam),
+            ),
           ),
         ],
       ),
@@ -170,6 +186,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
 /// Riga con il nome dell'app, se è installata e cosa fare.
 class _AppStatus extends StatelessWidget {
+  final ExternalApp app;
   final String name;
   final Future<bool> installed;
   final String whenInstalled;
@@ -177,6 +194,7 @@ class _AppStatus extends StatelessWidget {
   final Widget? action;
 
   const _AppStatus({
+    required this.app,
     required this.name,
     required this.installed,
     required this.whenInstalled,
@@ -195,6 +213,8 @@ class _AppStatus extends StatelessWidget {
           children: [
             Row(
               children: [
+                _AppLogo(app: app),
+                const SizedBox(width: 12),
                 Text(
                   name,
                   style: const TextStyle(
@@ -220,6 +240,37 @@ class _AppStatus extends StatelessWidget {
                 style: const TextStyle(color: Colors.white70, fontSize: 15),
               ),
           ],
+        );
+      },
+    );
+  }
+}
+
+/// Il logo dell'app: la sua icona vera, presa dal telefono se è installata;
+/// altrimenti un segnaposto grigio.
+class _AppLogo extends StatelessWidget {
+  final ExternalApp app;
+
+  const _AppLogo({required this.app});
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 40.0;
+    return FutureBuilder<Uint8List?>(
+      future: InstalledApps.icon(app),
+      builder: (context, snap) {
+        final png = snap.data;
+        if (png != null) {
+          return Image.memory(png, width: size, height: size);
+        }
+        return Container(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            color: Colors.white12,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.music_note, color: Colors.grey),
         );
       },
     );

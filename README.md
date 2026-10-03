@@ -56,12 +56,14 @@ flowchart LR
 - **Big purple "Add songs" button**, always visible in the playlist.
 - **Remove songs** from the playlist by swiping them to the left (or with
   the heart): a dialog asks for confirmation, and **Undo** puts them back.
+  Removing a song from its own screen takes you back to the playlist.
   <br><img src="docs/screenshots/remove.png" alt="Confirmation before removing a song" width="180">
-- **Import a playlist from Spotify** by pasting its link (public playlists).
-  Songs without synced lyrics are skipped. **Shazam** songs can be imported
-  too: in Shazam, connect Spotify and your Shazams are saved in the Spotify
-  playlist *My Shazam Tracks*. The import screen shows whether Spotify and
-  Shazam are installed on the phone.
+- **Import from Spotify and Shazam** by pasting links: a public Spotify
+  playlist, or Shazam song links (several at once, or the whole text Shazam
+  shares). A plain list also works, one song per line as *Artist - Title*. Songs without synced lyrics are skipped. To import all your
+  Shazams at once, connect Spotify in Shazam: they are saved in the Spotify
+  playlist *My Shazam Tracks*. The import screen shows the Spotify and Shazam
+  logos and whether the apps are installed on the phone.
   <br><img src="docs/screenshots/import.png" alt="Import a playlist" width="180">
 - **Lyrics in time with the music**: the current line is highlighted and
   **each word turns purple as it is sung**. Line timings come from LRCLIB.
@@ -92,7 +94,7 @@ Italian.
 | Song search and synced lyrics | [LRCLIB](https://lrclib.net) |
 | Video and audio | YouTube: search with [youtube_explode_dart](https://pub.dev/packages/youtube_explode_dart), playback with the embedded player |
 | Word timings | YouTube's automatic captions, when available |
-| Playlist import | Spotify's public embed page for the playlist |
+| Playlist import | Spotify's public embed page for the playlist; Shazam's public song pages |
 | Translations | [MyMemory](https://mymemory.translated.net) |
 | Covers | iTunes Search API |
 
@@ -101,7 +103,7 @@ Italian.
 > to display them, so a distributed version of the app would need licensed
 > lyrics. The video search also reads YouTube's pages without the official
 > API and may stop working if YouTube changes them, and the same goes for the
-> Spotify playlist import.
+> Spotify and Shazam import.
 
 ## Getting started
 
@@ -119,6 +121,9 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.10.2 | Import a plain *Artist - Title* list; retries when LRCLIB is busy; better title and accent matching |
+| 1.10.1 | Fix: Shazam links imported the wrong song; imported songs must match title and artist |
+| 1.10.0 | Import Shazam song links; Spotify and Shazam logos; back to the playlist after removing a song |
 | 1.9.2 | "Import from Spotify or Shazam" button at the top of the playlist |
 | 1.9.1 | Confirmation dialog before removing a favorite |
 | 1.9.0 | Remove songs with a swipe; import playlists from Spotify (and Shazam via Spotify) |
