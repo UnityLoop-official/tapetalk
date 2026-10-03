@@ -27,6 +27,36 @@ class Song {
     this.durationSeconds,
     this.offsetSeconds = 0,
   });
+
+  /// Identifica la canzone anche prima di conoscere il video.
+  String get key => '${artist.toLowerCase()}|${title.toLowerCase()}';
+
+  Song withVideo(String id) => Song(
+    title: title,
+    artist: artist,
+    youtubeId: id,
+    musixmatchUrl: musixmatchUrl,
+    durationSeconds: durationSeconds,
+    offsetSeconds: offsetSeconds,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'artist': artist,
+    'youtubeId': youtubeId,
+    'musixmatchUrl': musixmatchUrl,
+    'durationSeconds': durationSeconds,
+    'offsetSeconds': offsetSeconds,
+  };
+
+  factory Song.fromJson(Map json) => Song(
+    title: json['title'] as String,
+    artist: json['artist'] as String,
+    youtubeId: json['youtubeId'] as String,
+    musixmatchUrl: json['musixmatchUrl'] as String?,
+    durationSeconds: json['durationSeconds'] as int?,
+    offsetSeconds: (json['offsetSeconds'] as num? ?? 0).toDouble(),
+  );
 }
 
 const testSong = Song(
@@ -64,7 +94,7 @@ const lifesWhatYouMakeIt = Song(
   durationSeconds: 221,
 );
 
-/// Tutte le canzoni disponibili: ognuno sceglie le sue con il cuore.
+/// Canzoni suggerite: ognuno sceglie le sue con il cuore o ne cerca di nuove.
 const catalog = [
   testSong,
   englishmanInNewYork,

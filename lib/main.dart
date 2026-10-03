@@ -7,6 +7,7 @@ import 'favorites_store.dart';
 import 'logo.dart';
 import 'lyrics_screen.dart';
 import 'song.dart';
+import 'song_search.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -136,9 +137,8 @@ class FavoritesScreen extends StatelessWidget {
         ],
       ),
       body: ValueListenableBuilder(
-        valueListenable: FavoritesStore.ids,
-        builder: (context, _, _) {
-          final songs = FavoritesStore.songs;
+        valueListenable: FavoritesStore.songs,
+        builder: (context, songs, _) {
           if (songs.isEmpty) {
             return Center(
               child: TextButton.icon(
@@ -162,26 +162,110 @@ class FavoritesScreen extends StatelessWidget {
   }
 }
 
-/// Tutte le canzoni: il cuore le aggiunge o le toglie dai preferiti.
-class CatalogScreen extends StatelessWidget {
+/// Cerca canzoni nuove; senza ricerca mostra quelle suggerite.
+/// Il cuore le aggiunge o le toglie dai preferiti.
+class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
+
+  @override
+  State<CatalogScreen> createState() => _CatalogScreenState();
+}
+
+class _CatalogScreenState extends State<CatalogScreen> {
+  final _query = TextEditingController();
+  Future<List<Song>>? _results;
+
+  void _search() {
+    final q = _query.text.trim();
+    setState(() => _results = q.isEmpty ? null : SongSearch.search(q));
+  }
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  Widget _list(List<Song> songs) => ListView.separated(
+    itemCount: songs.length,
+    separatorBuilder: (_, _) => const Divider(height: 1),
+    itemBuilder: (context, i) => SongTile(
+      song: songs[i],
+      trailing: FavoriteButton(song: songs[i]),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Tutte le canzoni'),
-      ),
-      body: ListView.separated(
-        itemCount: catalog.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
-        itemBuilder: (context, i) => SongTile(
-          song: catalog[i],
-          trailing: FavoriteButton(song: catalog[i]),
+        title: TextField(
+          controller: _query,
+          autofocus: true,
+          textInputAction: TextInputAction.search,
+          decoration: const InputDecoration(
+            hintText: 'Cerca titolo o artista',
+            border: InputBorder.none,
+          ),
+          onSubmitted: (_) => _search(),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Cerca',
+            icon: const Icon(Icons.search),
+            onPressed: _search,
+          ),
+        ],
       ),
+      body: _results == null
+          ? _list(catalog)
+          : FutureBuilder(
+              future: _results,
+              builder: (context, snap) {
+                if (snap.hasError) {
+                  return const Center(
+                    child: Text('Ricerca non riuscita. Controlla la rete.'),
+                  );
+                }
+                final songs = snap.data;
+                if (songs == null) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (songs.isEmpty) {
+                  return const Center(
+                    child: Text('Nessuna canzone con il testo sincronizzato.'),
+                  );
+                }
+                return _list(songs);
+              },
+            ),
     );
+  }
+}
+
+/// La canzone pronta da suonare: se viene dalla ricerca cerca il video,
+/// con una rotella mentre aspetta. Null se il video non si trova.
+Future<Song?> _readySong(BuildContext context, Song song) async {
+  if (song.youtubeId.isNotEmpty) return song;
+  final saved = FavoritesStore.songs.value.where((s) => s.key == song.key);
+  if (saved.isNotEmpty) return saved.first;
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const Center(child: CircularProgressIndicator()),
+  );
+  try {
+    return await SongSearch.withVideo(song);
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Video non trovato per questa canzone')),
+      );
+    }
+    return null;
+  } finally {
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
   }
 }
 
@@ -199,9 +283,13 @@ class SongTile extends StatelessWidget {
       title: Text(song.title),
       subtitle: Text(song.artist),
       trailing: trailing,
-      onTap: () => Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => SongScreen(song: song))),
+      onTap: () async {
+        final ready = await _readySong(context, song);
+        if (ready == null || !context.mounted) return;
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => SongScreen(song: ready)));
+      },
     );
   }
 }
@@ -215,14 +303,17 @@ class FavoriteButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-      valueListenable: FavoritesStore.ids,
+      valueListenable: FavoritesStore.songs,
       builder: (context, _, _) {
         final isFavorite = FavoritesStore.contains(song);
         return IconButton(
           tooltip: isFavorite ? 'Togli dai preferiti' : 'Aggiungi ai preferiti',
           icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
           color: isFavorite ? Theme.of(context).colorScheme.primary : null,
-          onPressed: () => FavoritesStore.toggle(song),
+          onPressed: () async {
+            final ready = await _readySong(context, song);
+            if (ready != null) await FavoritesStore.toggle(ready);
+          },
         );
       },
     );

@@ -1,32 +1,48 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'song.dart';
 
-/// I preferiti di chi usa l'app, salvati solo sul suo telefono
-/// (id YouTube, in ordine di aggiunta). Al primo avvio c'è tutto il [catalog].
+/// I preferiti di chi usa l'app, salvati solo sul suo telefono, in ordine di
+/// aggiunta. Si salva la canzone intera, perché può venire dalla ricerca.
+/// Al primo avvio c'è tutto il [catalog].
 class FavoritesStore {
-  static const _key = 'favorites';
+  static const _key = 'favorite_songs';
 
-  static final ids = ValueNotifier<List<String>>([]);
+  /// Versione precedente: solo gli id YouTube delle canzoni del [catalog].
+  static const _oldKey = 'favorites';
+
+  static final songs = ValueNotifier<List<Song>>([]);
 
   static Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    ids.value =
-        prefs.getStringList(_key) ?? [for (final s in catalog) s.youtubeId];
+    final saved = prefs.getString(_key);
+    final oldIds = prefs.getStringList(_oldKey);
+    if (saved != null) {
+      songs.value = [
+        for (final j in jsonDecode(saved) as List) Song.fromJson(j as Map),
+      ];
+    } else if (oldIds != null) {
+      songs.value = [
+        for (final id in oldIds) ...catalog.where((s) => s.youtubeId == id),
+      ];
+    } else {
+      songs.value = [...catalog];
+    }
   }
 
-  static List<Song> get songs => [
-    for (final id in ids.value) ...catalog.where((s) => s.youtubeId == id),
-  ];
+  static bool contains(Song song) => songs.value.any((s) => s.key == song.key);
 
-  static bool contains(Song song) => ids.value.contains(song.youtubeId);
-
+  /// [song] deve avere già il video (vedi SongSearch.withVideo).
   static Future<void> toggle(Song song) async {
-    final next = [...ids.value];
-    if (!next.remove(song.youtubeId)) next.add(song.youtubeId);
-    ids.value = next;
+    final next = [...songs.value];
+    final before = next.length;
+    next.removeWhere((s) => s.key == song.key);
+    if (next.length == before) next.add(song);
+    songs.value = next;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_key, next);
+    await prefs.setString(_key, jsonEncode([for (final s in next) s.toJson()]));
   }
 }
