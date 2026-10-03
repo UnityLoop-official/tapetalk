@@ -100,7 +100,7 @@ class HomeScreen extends StatelessWidget {
                       textStyle: const TextStyle(fontSize: 18),
                     ),
                     icon: const Icon(Icons.favorite),
-                    label: const Text('I miei preferiti'),
+                    label: const Text('My favorites'),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => const FavoritesScreen(),
