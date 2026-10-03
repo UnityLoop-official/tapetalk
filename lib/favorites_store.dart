@@ -7,7 +7,7 @@ import 'song.dart';
 
 /// I preferiti di chi usa l'app, salvati solo sul suo telefono, in ordine di
 /// aggiunta. Si salva la canzone intera, perché può venire dalla ricerca.
-/// Al primo avvio c'è tutto il [catalog].
+/// Al primo avvio è vuota: ognuno si crea la sua playlist.
 class FavoritesStore {
   static const _key = 'favorite_songs';
 
@@ -28,8 +28,6 @@ class FavoritesStore {
       songs.value = [
         for (final id in oldIds) ...catalog.where((s) => s.youtubeId == id),
       ];
-    } else {
-      songs.value = [...catalog];
     }
   }
 

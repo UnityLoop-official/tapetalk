@@ -63,7 +63,7 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  MouthLogo(
+                  RotatingMouthLogo(
                     size: 260,
                     color: Colors.black,
                     background: scheme.primary,
@@ -138,42 +138,96 @@ class FavoritesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final purple = Theme.of(context).colorScheme.primary;
     void openCatalog() => Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const CatalogScreen()));
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text('I miei preferiti'),
-        actions: [
-          IconButton(
-            tooltip: 'Aggiungi canzoni',
-            icon: const Icon(Icons.add),
-            onPressed: openCatalog,
-          ),
-        ],
-      ),
-      body: ValueListenableBuilder(
-        valueListenable: FavoritesStore.songs,
-        builder: (context, songs, _) {
-          if (songs.isEmpty) {
-            return Center(
-              child: TextButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text('Aggiungi la prima canzone'),
+    return ValueListenableBuilder(
+      valueListenable: FavoritesStore.songs,
+      builder: (context, songs, _) => Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          title: const Text('I miei preferiti'),
+        ),
+        // Pulsante grande e viola, sempre in vista finché c'è la lista.
+        floatingActionButton: songs.isEmpty
+            ? null
+            : FloatingActionButton.extended(
+                backgroundColor: purple,
+                foregroundColor: Colors.black,
+                icon: const Icon(Icons.add, size: 30),
+                label: const Text(
+                  'Aggiungi canzoni',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
                 onPressed: openCatalog,
               ),
-            );
-          }
-          return ListView.separated(
-            itemCount: songs.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, i) => SongTile(
-              song: songs[i],
-              trailing: const Icon(Icons.chevron_right),
+        body: songs.isEmpty
+            ? _EmptyPlaylist(onCreate: openCatalog)
+            : ListView.separated(
+                // Spazio in fondo per non coprire l'ultima canzone.
+                padding: const EdgeInsets.only(bottom: 96),
+                itemCount: songs.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, i) => SongTile(
+                  song: songs[i],
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+/// Lista vuota: invita a creare la propria playlist.
+class _EmptyPlaylist extends StatelessWidget {
+  final VoidCallback onCreate;
+
+  const _EmptyPlaylist({required this.onCreate});
+
+  @override
+  Widget build(BuildContext context) {
+    final purple = Theme.of(context).colorScheme.primary;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.queue_music, size: 96, color: purple),
+            const SizedBox(height: 24),
+            const Text(
+              'Crea la tua playlist!',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
             ),
-          );
-        },
+            const SizedBox(height: 12),
+            const Text(
+              'Cerca le canzoni che ami e aggiungile con il cuore: '
+              'le troverai qui, pronte da cantare.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 17, color: Colors.white70),
+            ),
+            const SizedBox(height: 36),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: purple,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 20,
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              icon: const Icon(Icons.add, size: 30),
+              label: const Text('Aggiungi canzoni'),
+              onPressed: onCreate,
+            ),
+          ],
+        ),
       ),
     );
   }

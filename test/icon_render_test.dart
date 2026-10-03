@@ -16,7 +16,6 @@ Widget _icon({required double logoSize, required Color? bg}) {
         alignment: Alignment.center,
         // Senza fumetto: a dimensione icona la scritta non si leggerebbe.
         child: MouthLogo(
-          phrase: null,
           size: logoSize,
           color: Colors.black,
           background: purple,

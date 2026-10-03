@@ -1,22 +1,95 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Frase di una canzone famosa da mettere nel fumetto.
+class SongQuote {
+  /// Testo del fumetto; "\n" per andare a capo.
+  final String phrase;
+  final String artist;
+
+  const SongQuote(this.phrase, this.artist);
+}
+
+const songQuotes = [
+  SongQuote('Let it be', 'The Beatles'),
+  SongQuote('We will\nrock you', 'Queen'),
+  SongQuote('Imagine', 'John Lennon'),
+  SongQuote("Stayin'\nalive", 'Bee Gees'),
+  SongQuote('I will\nsurvive', 'Gloria Gaynor'),
+];
+
+/// Il logo della pagina iniziale: la stessa bocca, con le frasi di
+/// [songQuotes] che si alternano con una dissolvenza.
+class RotatingMouthLogo extends StatefulWidget {
+  final double size;
+  final Color color;
+  final Color background;
+  final Duration interval;
+
+  const RotatingMouthLogo({
+    super.key,
+    this.size = 220,
+    required this.color,
+    required this.background,
+    this.interval = const Duration(seconds: 4),
+  });
+
+  @override
+  State<RotatingMouthLogo> createState() => _RotatingMouthLogoState();
+}
+
+class _RotatingMouthLogoState extends State<RotatingMouthLogo> {
+  late final Timer _timer;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(widget.interval, (_) {
+      setState(() => _index = (_index + 1) % songQuotes.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 700),
+      child: MouthLogo(
+        key: ValueKey(_index),
+        quote: songQuotes[_index],
+        size: widget.size,
+        color: widget.color,
+        background: widget.background,
+      ),
+    );
+  }
+}
+
 /// Logo: il quadretto-bocca del quadro "Never stop dreaming" (quello blu),
 /// tutto in [color], con i vuoti nel colore di sfondo, e un fumetto con una
-/// frase di una canzone famosa. Senza [phrase] c'è solo il quadretto,
+/// frase di una canzone famosa e il cantante sotto. Senza [quote] c'è solo
+/// il quadretto,
 /// centrato in un quadrato (per l'icona dell'app).
 class MouthLogo extends StatelessWidget {
   final double size;
   final Color color;
   final Color background;
-  final String? phrase;
+  final SongQuote? quote;
 
   const MouthLogo({
     super.key,
     this.size = 220,
     required this.color,
     required this.background,
-    this.phrase = 'Let it be',
+    this.quote,
   });
 
   // Griglia di disegno, scalata a [size]: con il fumetto 220x175,
@@ -27,14 +100,15 @@ class MouthLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final phrase = this.phrase;
-    if (phrase == null) {
+    final quote = this.quote;
+    if (quote == null) {
       return SizedBox.square(
         dimension: size,
         child: CustomPaint(painter: _MouthPainter(color, background, false)),
       );
     }
     final k = size / _w;
+    const bubble = _MouthPainter._bubbleCenter;
     return SizedBox(
       width: size,
       height: _h * k,
@@ -45,17 +119,33 @@ class MouthLogo extends StatelessWidget {
           ),
           // Testo del fumetto (vedi _bubbleCenter nel painter).
           Positioned(
-            left: (_MouthPainter._bubbleCenter.dx - 30) * k,
-            top: (_MouthPainter._bubbleCenter.dy - 17) * k,
+            left: (bubble.dx - 30) * k,
+            top: (bubble.dy - 22) * k,
             width: 60 * k,
-            height: 26 * k,
+            height: 31 * k,
             child: Transform.rotate(
               angle: -0.12,
               child: FittedBox(
                 child: Text(
-                  phrase,
-                  style: GoogleFonts.permanentMarker(color: color),
+                  quote.phrase,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.permanentMarker(color: color, height: 1),
                 ),
+              ),
+            ),
+          ),
+          // Il cantante, in piccolo sotto il fumetto.
+          Positioned(
+            left: (bubble.dx - 50) * k,
+            top: (bubble.dy + 32) * k,
+            width: 100 * k,
+            child: Text(
+              quote.artist,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: color,
+                fontSize: 10 * k,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -215,9 +305,9 @@ class _MouthPainter extends CustomPainter {
   void _bubble(Canvas canvas, Paint ink, Paint hole, Paint stroke) {
     const c = _bubbleCenter;
     final shape = Path()
-      ..addOval(Rect.fromCenter(center: c, width: 76, height: 50));
+      ..addOval(Rect.fromCenter(center: c, width: 80, height: 58));
     final tail = Path()
-      ..moveTo(c.dx - 30, c.dy + 4)
+      ..moveTo(c.dx - 32, c.dy + 4)
       ..quadraticBezierTo(c.dx - 40, c.dy + 22, c.dx - 56, c.dy + 30)
       ..quadraticBezierTo(c.dx - 30, c.dy + 26, c.dx - 18, c.dy + 18)
       ..close();
@@ -229,8 +319,8 @@ class _MouthPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.6
       ..strokeCap = StrokeCap.round;
-    canvas.drawLine(c + const Offset(-20, 8), c + const Offset(20, 3), under);
-    canvas.drawLine(c + const Offset(-14, 12), c + const Offset(16, 8), under);
+    canvas.drawLine(c + const Offset(-20, 14), c + const Offset(20, 9), under);
+    canvas.drawLine(c + const Offset(-14, 18), c + const Offset(16, 14), under);
   }
 
   @override
