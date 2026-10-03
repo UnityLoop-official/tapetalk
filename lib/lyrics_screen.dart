@@ -24,6 +24,12 @@ class _LyricsScreenState extends State<LyricsScreen> {
   List<LyricLine>? _lines;
   String? _error;
   int _current = -1;
+
+  /// Per ogni riga, l'istante in cui viene cantata ciascuna parola.
+  List<List<Duration>> _wordStarts = [];
+
+  /// Parole già cantate nella riga corrente (diventano viola).
+  int _sung = 0;
   bool _playing = true;
 
   /// Velocità disponibili: oltre lo 0.75× la voce inizia a suonare innaturale.
@@ -47,7 +53,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
       if (playing != _playing && mounted) setState(() => _playing = playing);
     });
     _loadLyrics();
-    _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) => _tick());
+    _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
   }
 
   Future<void> _loadLyrics() async {
@@ -59,7 +65,12 @@ class _LyricsScreenState extends State<LyricsScreen> {
       _keys
         ..clear()
         ..addAll(List.generate(lines.length, (_) => GlobalKey()));
-      setState(() => _lines = lines);
+      setState(() {
+        _lines = lines;
+        _wordStarts = [
+          for (var i = 0; i < lines.length; i++) _estimateWordStarts(lines, i),
+        ];
+      });
       // Le traduzioni mancanti compaiono man mano che arrivano.
       await service.fillTranslations(widget.song, lines, () {
         if (mounted) setState(() {});
@@ -68,6 +79,37 @@ class _LyricsScreenState extends State<LyricsScreen> {
       if (mounted) setState(() => _error = '$e');
     }
   }
+
+  /// Il testo sincronizzato ha i tempi solo per riga: stimo quando viene
+  /// cantata ogni parola dividendo il tempo della riga in proporzione alla
+  /// lunghezza delle parole, a un ritmo di canto realistico.
+  static List<Duration> _estimateWordStarts(List<LyricLine> lines, int i) {
+    final words = _words(lines[i].english);
+    if (words.isEmpty) return [];
+    final start = lines[i].time;
+    // Peso di una parola: le lettere più una base, così anche "I" o "a"
+    // durano un po'.
+    final weights = [for (final w in words) w.length + 2];
+    final total = weights.fold(0, (a, b) => a + b);
+    // La riga si canta in quasi tutto il tempo fino alla successiva
+    // (con un po' di respiro alla fine). Se dopo c'è una lunga pausa
+    // strumentale, non si va oltre una lettera ogni 150 ms.
+    var span = Duration(milliseconds: total * 150);
+    if (i + 1 < lines.length) {
+      final gap = (lines[i + 1].time - start) * 0.85;
+      if (gap < span) span = gap;
+    }
+    final starts = <Duration>[];
+    var acc = 0;
+    for (final w in weights) {
+      starts.add(start + span * (acc / total));
+      acc += w;
+    }
+    return starts;
+  }
+
+  static List<String> _words(String line) =>
+      line.split(' ').where((w) => w.isNotEmpty).toList();
 
   Future<void> _tick() async {
     final lines = _lines;
@@ -78,8 +120,16 @@ class _LyricsScreenState extends State<LyricsScreen> {
     for (var i = 0; i < lines.length; i++) {
       if (lines[i].time <= pos) idx = i;
     }
+    final starts = idx >= 0 ? _wordStarts[idx] : const <Duration>[];
+    final sung = starts.where((t) => t <= pos).length;
+    if (idx == _current && sung != _sung && mounted) {
+      setState(() => _sung = sung);
+    }
     if (idx != _current && mounted) {
-      setState(() => _current = idx);
+      setState(() {
+        _current = idx;
+        _sung = sung;
+      });
       final ctx = idx >= 0 ? _keys[idx].currentContext : null;
       if (ctx != null) {
         Scrollable.ensureVisible(
@@ -103,7 +153,10 @@ class _LyricsScreenState extends State<LyricsScreen> {
     await _player.seekTo(seconds: 0, allowSeekAhead: true);
     await _player.playVideo();
     if (!mounted) return;
-    setState(() => _current = -1);
+    setState(() {
+      _current = -1;
+      _sung = 0;
+    });
     if (_scroll.hasClients) {
       _scroll.animateTo(
         0,
@@ -193,6 +246,23 @@ class _LyricsScreenState extends State<LyricsScreen> {
     );
   }
 
+  /// Riga corrente: le parole già cantate sono viola.
+  Widget _karaokeText(String english) {
+    final purple = Theme.of(context).colorScheme.primary;
+    final words = _words(english);
+    return Text.rich(
+      TextSpan(
+        children: [
+          for (var w = 0; w < words.length; w++)
+            TextSpan(
+              text: w < words.length - 1 ? '${words[w]} ' : words[w],
+              style: w < _sung ? TextStyle(color: purple) : null,
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLyrics() {
     if (_error != null) {
       return Center(
@@ -256,7 +326,9 @@ class _LyricsScreenState extends State<LyricsScreen> {
                       fontSize: active ? 26 : 20,
                       fontWeight: active ? FontWeight.bold : FontWeight.normal,
                     ),
-                    child: Text(line.english),
+                    child: active
+                        ? _karaokeText(line.english)
+                        : Text(line.english),
                   ),
                   if (line.italian.isNotEmpty)
                     Padding(
