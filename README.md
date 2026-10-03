@@ -55,6 +55,13 @@ flowchart LR
   Only songs with synced lyrics are shown; the right YouTube video is picked
   by matching the song's duration.
 - **Big purple "Add songs" button**, always visible in the playlist.
+- **Remove songs** from the playlist by swiping them to the left, with
+  **Undo** to put them back.
+- **Import a playlist from Spotify** by pasting its link (public playlists).
+  Songs without synced lyrics are skipped. **Shazam** songs can be imported
+  too: in Shazam, connect Spotify and your Shazams are saved in the Spotify
+  playlist *My Shazam Tracks*. The import screen shows whether Spotify and
+  Shazam are installed on the phone.
 - **Lyrics in time with the music**: the current line is highlighted and
   **each word turns purple as it is sung**. Line timings come from LRCLIB.
   When the video has YouTube's automatic English captions, each word uses its
@@ -84,6 +91,7 @@ Italian.
 | Song search and synced lyrics | [LRCLIB](https://lrclib.net) |
 | Video and audio | YouTube: search with [youtube_explode_dart](https://pub.dev/packages/youtube_explode_dart), playback with the embedded player |
 | Word timings | YouTube's automatic captions, when available |
+| Playlist import | Spotify's public embed page for the playlist |
 | Translations | [MyMemory](https://mymemory.translated.net) |
 | Covers | iTunes Search API |
 
@@ -91,7 +99,8 @@ Italian.
 > translations are copyrighted: LRCLIB and MyMemory do not provide a license
 > to display them, so a distributed version of the app would need licensed
 > lyrics. The video search also reads YouTube's pages without the official
-> API and may stop working if YouTube changes them.
+> API and may stop working if YouTube changes them, and the same goes for the
+> Spotify playlist import.
 
 ## Getting started
 
@@ -109,6 +118,7 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.9.0 | Remove songs with a swipe; import playlists from Spotify (and Shazam via Spotify) |
 | 1.8.2 | The video restarts by itself if it doesn't start on its own |
 | 1.8.1 | Eye button moved under the video |
 | 1.8.0 | Real word timings from YouTube's automatic captions; eye button to hide the video |
@@ -129,6 +139,8 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 - `lib/main.dart` – home screen, playlist, search, song screen
 - `lib/favorites_store.dart` – the playlist, saved on the phone
 - `lib/song_search.dart` – song search (LRCLIB) and video search (YouTube)
+- `lib/playlist_import.dart`, `lib/import_screen.dart` – Spotify playlist import
+- `lib/installed_apps.dart` – checks whether Spotify and Shazam are installed (Android code in `MainActivity.kt`)
 - `lib/song.dart` – song model and suggested songs
 - `lib/lyrics_screen.dart` – lyrics in time, purple words and controls
 - `lib/lyrics_service.dart` – lyrics and translations

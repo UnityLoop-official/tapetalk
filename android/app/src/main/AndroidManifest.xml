@@ -38,6 +38,9 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- App da cui si importano le playlist: TapeTalk controlla se ci sono. -->
+        <package android:name="com.spotify.music"/>
+        <package android:name="com.shazam.android"/>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

@@ -39,6 +39,38 @@ class FavoritesStore {
     final before = next.length;
     next.removeWhere((s) => s.key == song.key);
     if (next.length == before) next.add(song);
+    await _save(next);
+  }
+
+  /// Toglie [song] e restituisce dov'era, per poterla rimettere con [insert].
+  static Future<int> remove(Song song) async {
+    final next = [...songs.value];
+    final index = next.indexWhere((s) => s.key == song.key);
+    if (index < 0) return -1;
+    next.removeAt(index);
+    await _save(next);
+    return index;
+  }
+
+  /// Rimette [song] alla posizione [index] (annulla di [remove]).
+  static Future<void> insert(Song song, int index) async {
+    if (contains(song)) return;
+    final next = [...songs.value];
+    next.insert(index.clamp(0, next.length), song);
+    await _save(next);
+  }
+
+  /// Aggiorna una canzone già nella lista (es. con il video trovato);
+  /// se non c'è, non fa niente.
+  static Future<void> replace(Song song) async {
+    final next = [...songs.value];
+    final index = next.indexWhere((s) => s.key == song.key);
+    if (index < 0) return;
+    next[index] = song;
+    await _save(next);
+  }
+
+  static Future<void> _save(List<Song> next) async {
     songs.value = next;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, jsonEncode([for (final s in next) s.toJson()]));

@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'cover_service.dart';
 import 'favorites_store.dart';
+import 'import_screen.dart';
 import 'lyrics_screen.dart';
 import 'lyrics_service.dart';
 import 'mouth_logo.dart';
@@ -150,6 +151,13 @@ class FavoritesScreen extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: Colors.black,
           title: const Text('My favorites'),
+          actions: [
+            IconButton(
+              tooltip: 'Import a playlist',
+              icon: const Icon(Icons.playlist_add),
+              onPressed: () => _openImport(context),
+            ),
+          ],
         ),
         // Pulsante grande e viola, sempre in vista finché c'è la lista.
         floatingActionButton: songs.isEmpty
@@ -171,12 +179,60 @@ class FavoritesScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 96),
                 itemCount: songs.length,
                 separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (context, i) => SongTile(
-                  song: songs[i],
-                  trailing: const Icon(Icons.chevron_right),
-                ),
+                itemBuilder: (context, i) => _RemovableSongTile(song: songs[i]),
               ),
       ),
+    );
+  }
+}
+
+/// Canzone della playlist: scorrendola verso sinistra si toglie, con
+/// "Undo" per rimetterla dov'era.
+class _RemovableSongTile extends StatelessWidget {
+  final Song song;
+
+  const _RemovableSongTile({required this.song});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+      key: ValueKey(song.key),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        color: Colors.red.shade700,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Remove',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(width: 8),
+            Icon(Icons.delete, color: Colors.white),
+          ],
+        ),
+      ),
+      onDismissed: (_) async {
+        final messenger = ScaffoldMessenger.of(context);
+        final index = await FavoritesStore.remove(song);
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('"${song.title}" removed from favorites'),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () => FavoritesStore.insert(song, index),
+              ),
+            ),
+          );
+      },
+      child: SongTile(song: song, trailing: const Icon(Icons.chevron_right)),
     );
   }
 }
@@ -227,6 +283,21 @@ class _EmptyPlaylist extends StatelessWidget {
               icon: const Icon(Icons.add, size: 30),
               label: const Text('Add songs'),
               onPressed: onCreate,
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: purple,
+                side: BorderSide(color: purple),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+                textStyle: const TextStyle(fontSize: 16),
+              ),
+              icon: const Icon(Icons.playlist_add),
+              label: const Text('Import from Spotify or Shazam'),
+              onPressed: () => _openImport(context),
             ),
           ],
         ),
@@ -319,9 +390,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
 /// La canzone pronta da suonare: se viene dalla ricerca cerca il video,
 /// con una rotella mentre aspetta. Null se il video non si trova.
+void _openImport(BuildContext context) => Navigator.of(
+  context,
+).push(MaterialPageRoute(builder: (_) => const ImportScreen()));
+
 Future<Song?> _readySong(BuildContext context, Song song) async {
   if (song.youtubeId.isNotEmpty) return song;
-  final saved = FavoritesStore.songs.value.where((s) => s.key == song.key);
+  final saved = FavoritesStore.songs.value.where(
+    (s) => s.key == song.key && s.youtubeId.isNotEmpty,
+  );
   if (saved.isNotEmpty) return saved.first;
   showDialog<void>(
     context: context,
@@ -329,7 +406,10 @@ Future<Song?> _readySong(BuildContext context, Song song) async {
     builder: (_) => const Center(child: CircularProgressIndicator()),
   );
   try {
-    return await SongSearch.withVideo(song);
+    final ready = await SongSearch.withVideo(song);
+    // Canzone importata senza video: si salva il video trovato.
+    await FavoritesStore.replace(ready);
+    return ready;
   } catch (_) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
