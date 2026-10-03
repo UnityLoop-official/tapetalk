@@ -234,15 +234,6 @@ class _LyricsScreenState extends State<LyricsScreen> {
           '${widget.song.artist} – ${widget.song.title}',
           style: const TextStyle(fontSize: 16),
         ),
-        // Nella barra e non sopra il video: il player di YouTube copre i
-        // pulsanti disegnati sopra di lui.
-        actions: [
-          IconButton(
-            tooltip: _videoHidden ? 'Show video' : 'Hide video',
-            icon: Icon(_videoHidden ? Icons.visibility_off : Icons.visibility),
-            onPressed: () => setState(() => _videoHidden = !_videoHidden),
-          ),
-        ],
       ),
       // SafeArea: i controlli restano sopra la barra di navigazione di Android.
       body: SafeArea(
@@ -262,6 +253,16 @@ class _LyricsScreenState extends State<LyricsScreen> {
                   child: YoutubePlayer(controller: _player),
                 ),
               ),
+            ),
+            // Sotto il video e non sopra: il player di YouTube copre i
+            // pulsanti disegnati sopra di lui. Nasconde il video, non lo ferma.
+            TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: Colors.grey),
+              icon: Icon(
+                _videoHidden ? Icons.visibility_off : Icons.visibility,
+              ),
+              label: Text(_videoHidden ? 'Show video' : 'Hide video'),
+              onPressed: () => setState(() => _videoHidden = !_videoHidden),
             ),
             Expanded(child: _buildLyrics()),
             Padding(

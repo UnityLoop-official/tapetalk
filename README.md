@@ -60,8 +60,9 @@ flowchart LR
   When the video has YouTube's automatic English captions, each word uses its
   real timing from them; otherwise word timings are estimated from the length
   of the words.
-- **Eye button** above the video to hide it while singing along: the music
-  keeps playing and the lyrics get more room.
+- **Eye button** under the video to hide it while reading and listening: the
+  video is only hidden, not stopped, so the music keeps playing and the lyrics
+  get more room.
 - **Italian translation** under every line.
 - Pause / Play, **Restart** and playback **speed** (1× · 0.85× · 0.75×)
   without distorting the voice.
@@ -108,6 +109,7 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.8.1 | Eye button moved under the video |
 | 1.8.0 | Real word timings from YouTube's automatic captions; eye button to hide the video |
 | 1.7.3 | Bigger video player (356×200), as required by YouTube |
 | 1.7.2 | Old Musixmatch translations deleted from the phone |
