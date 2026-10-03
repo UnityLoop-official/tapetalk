@@ -33,6 +33,16 @@ class _LyricsScreenState extends State<LyricsScreen> {
   int _sung = 0;
   bool _playing = true;
 
+  /// A volte il WebView non fa partire il video da solo: lo rilancio
+  /// finché non parte, a meno che non l'abbia fermato chi usa l'app.
+  Timer? _startWatchdog;
+  int _startAttempts = 0;
+  bool _userPaused = false;
+
+  /// Audio tolto per farlo partire (il video muto parte sempre): si
+  /// rimette appena il video suona.
+  bool _mutedToStart = false;
+
   /// Video nascosto (occhio chiuso): il player continua a suonare ma quasi
   /// non occupa spazio, così il testo ha più posto e niente distrae.
   bool _videoHidden = false;
@@ -55,10 +65,38 @@ class _LyricsScreenState extends State<LyricsScreen> {
     );
     _player.listen((v) {
       final playing = v.playerState == PlayerState.playing;
+      if (playing && _mutedToStart) {
+        _mutedToStart = false;
+        _player.unMute();
+      }
       if (playing != _playing && mounted) setState(() => _playing = playing);
     });
+    _startWatchdog = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => _ensureStarted(),
+    );
     _loadLyrics();
     _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
+  }
+
+  /// Se dopo l'avvio il video è ancora fermo, riprova a farlo partire:
+  /// prima normalmente, poi senza audio (che si rimette appena parte).
+  Future<void> _ensureStarted() async {
+    final state = _player.value.playerState;
+    if (_userPaused ||
+        state == PlayerState.playing ||
+        state == PlayerState.ended ||
+        _startAttempts >= 8) {
+      _startWatchdog?.cancel();
+      return;
+    }
+    if (state == PlayerState.buffering) return;
+    _startAttempts++;
+    if (_startAttempts >= 2 && !_mutedToStart) {
+      _mutedToStart = true;
+      await _player.mute();
+    }
+    await _player.playVideo();
   }
 
   Future<void> _loadLyrics() async {
@@ -186,6 +224,11 @@ class _LyricsScreenState extends State<LyricsScreen> {
     }
   }
 
+  void _pause() {
+    _userPaused = true;
+    _player.pauseVideo();
+  }
+
   Future<void> _restart() async {
     await _player.seekTo(seconds: 0, allowSeekAhead: true);
     await _player.playVideo();
@@ -218,6 +261,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
   @override
   void dispose() {
     _ticker?.cancel();
+    _startWatchdog?.cancel();
     _player.close();
     _scroll.dispose();
     super.dispose();
@@ -279,8 +323,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
                   IconButton.filled(
                     iconSize: 48,
                     icon: Icon(_playing ? Icons.pause : Icons.play_arrow),
-                    onPressed: () =>
-                        _playing ? _player.pauseVideo() : _player.playVideo(),
+                    onPressed: () => _playing ? _pause() : _player.playVideo(),
                   ),
                   const SizedBox(width: 32),
                   _SmallControl(

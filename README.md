@@ -109,6 +109,7 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.8.2 | The video restarts by itself if it doesn't start on its own |
 | 1.8.1 | Eye button moved under the video |
 | 1.8.0 | Real word timings from YouTube's automatic captions; eye button to hide the video |
 | 1.7.3 | Bigger video player (356×200), as required by YouTube |
