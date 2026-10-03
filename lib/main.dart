@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'cover_service.dart';
 import 'favorites_store.dart';
 import 'lyrics_screen.dart';
+import 'lyrics_service.dart';
 import 'mouth_logo.dart';
 import 'song.dart';
 import 'song_search.dart';
@@ -13,6 +14,7 @@ import 'song_search.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FavoritesStore.load();
+  await LyricsService.removeMusixmatchTranslations();
   runApp(const TapeTalkApp());
 }
 

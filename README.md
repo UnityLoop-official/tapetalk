@@ -103,6 +103,7 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.7.2 | Old Musixmatch translations deleted from the phone |
 | 1.7.1 | Musixmatch removed: translations only from MyMemory |
 | 1.7.0 | Whole interface in English |
 | 1.6.1 | *My favorites* button in English |

@@ -68,6 +68,16 @@ class LyricsService {
 
   String _cacheKey(Song song) => 'translations:${song.artist}:${song.title}';
 
+  /// Fino alla 1.7.0 le traduzioni di [testSong] arrivavano da Musixmatch:
+  /// le cancella una volta sola, così vengono riscaricate da MyMemory.
+  static Future<void> removeMusixmatchTranslations() async {
+    const done = 'musixmatch_removed';
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(done) ?? false) return;
+    await prefs.remove(LyricsService()._cacheKey(testSong));
+    await prefs.setBool(done, true);
+  }
+
   Map<String, String> _readCache(Song song, SharedPreferences prefs) =>
       Map<String, String>.from(
         jsonDecode(prefs.getString(_cacheKey(song)) ?? '{}') as Map,
