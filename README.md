@@ -54,8 +54,8 @@ flowchart LR
   Only songs with synced lyrics are shown; the right YouTube video is picked
   by matching the song's duration.
 - **Big purple "Add songs" button**, always visible in the playlist.
-- **Remove songs** from the playlist by swiping them to the left, with
-  **Undo** to put them back.
+- **Remove songs** from the playlist by swiping them to the left (or with
+  the heart): a dialog asks for confirmation, and **Undo** puts them back.
   <br><img src="docs/screenshots/remove.png" alt="Swipe to remove a song" width="180">
 - **Import a playlist from Spotify** by pasting its link (public playlists).
   Songs without synced lyrics are skipped. **Shazam** songs can be imported
@@ -119,6 +119,8 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.9.2 | "Import from Spotify or Shazam" button at the top of the playlist |
+| 1.9.1 | Confirmation dialog before removing a favorite |
 | 1.9.0 | Remove songs with a swipe; import playlists from Spotify (and Shazam via Spotify) |
 | 1.8.2 | The video restarts by itself if it doesn't start on its own |
 | 1.8.1 | Eye button moved under the video |

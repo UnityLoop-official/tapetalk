@@ -174,14 +174,55 @@ class FavoritesScreen extends StatelessWidget {
               ),
         body: songs.isEmpty
             ? _EmptyPlaylist(onCreate: openCatalog)
-            : ListView.separated(
-                // Spazio in fondo per non coprire l'ultima canzone.
-                padding: const EdgeInsets.only(bottom: 96),
-                itemCount: songs.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (context, i) => _RemovableSongTile(song: songs[i]),
+            : Column(
+                children: [
+                  // Importare si può anche con la lista già piena.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: _ImportButton(
+                        onPressed: () => _openImport(context),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      // Spazio in fondo per non coprire l'ultima canzone.
+                      padding: const EdgeInsets.only(bottom: 96),
+                      itemCount: songs.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, i) =>
+                          _RemovableSongTile(song: songs[i]),
+                    ),
+                  ),
+                ],
               ),
       ),
+    );
+  }
+}
+
+/// Pulsante viola bordato per importare una playlist da Spotify o Shazam.
+class _ImportButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _ImportButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final purple = Theme.of(context).colorScheme.primary;
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: purple,
+        side: BorderSide(color: purple),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        textStyle: const TextStyle(fontSize: 16),
+      ),
+      icon: const Icon(Icons.playlist_add),
+      label: const Text('Import from Spotify or Shazam'),
+      onPressed: onPressed,
     );
   }
 }
@@ -198,6 +239,7 @@ class _RemovableSongTile extends StatelessWidget {
     return Dismissible(
       key: ValueKey(song.key),
       direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmRemove(context, song),
       background: Container(
         color: Colors.red.shade700,
         alignment: Alignment.centerRight,
@@ -285,20 +327,7 @@ class _EmptyPlaylist extends StatelessWidget {
               onPressed: onCreate,
             ),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: purple,
-                side: BorderSide(color: purple),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
-                ),
-                textStyle: const TextStyle(fontSize: 16),
-              ),
-              icon: const Icon(Icons.playlist_add),
-              label: const Text('Import from Spotify or Shazam'),
-              onPressed: () => _openImport(context),
-            ),
+            _ImportButton(onPressed: () => _openImport(context)),
           ],
         ),
       ),
@@ -390,6 +419,39 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
 /// La canzone pronta da suonare: se viene dalla ricerca cerca il video,
 /// con una rotella mentre aspetta. Null se il video non si trova.
+/// Chiede conferma prima di togliere una canzone dai preferiti, con una
+/// finestra grande al centro: si toglie solo con "Remove".
+Future<bool> _confirmRemove(BuildContext context, Song song) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      icon: const Icon(Icons.delete, size: 40, color: Colors.redAccent),
+      title: const Text('Remove from favorites?'),
+      content: Text(
+        '"${song.title}" by ${song.artist} will be removed from your playlist.',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 17),
+      ),
+      actionsAlignment: MainAxisAlignment.spaceEvenly,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel', style: TextStyle(fontSize: 17)),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.red.shade700,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Remove', style: TextStyle(fontSize: 17)),
+        ),
+      ],
+    ),
+  );
+  return ok ?? false;
+}
+
 void _openImport(BuildContext context) => Navigator.of(
   context,
 ).push(MaterialPageRoute(builder: (_) => const ImportScreen()));
@@ -464,6 +526,8 @@ class FavoriteButton extends StatelessWidget {
           icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
           color: isFavorite ? Theme.of(context).colorScheme.primary : null,
           onPressed: () async {
+            if (isFavorite && !await _confirmRemove(context, song)) return;
+            if (!context.mounted) return;
             final ready = await _readySong(context, song);
             if (ready != null) await FavoritesStore.toggle(ready);
           },
