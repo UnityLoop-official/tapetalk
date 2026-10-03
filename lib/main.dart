@@ -3,11 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'cover_service.dart';
+import 'favorites_store.dart';
 import 'logo.dart';
 import 'lyrics_screen.dart';
 import 'song.dart';
 
-void main() => runApp(const TapeTalkApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FavoritesStore.load();
+  runApp(const TapeTalkApp());
+}
 
 class TapeTalkApp extends StatelessWidget {
   const TapeTalkApp({super.key});
@@ -115,31 +120,111 @@ class FavoritesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    void openCatalog() => Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CatalogScreen()));
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.black,
         title: const Text('I miei preferiti'),
+        actions: [
+          IconButton(
+            tooltip: 'Aggiungi canzoni',
+            icon: const Icon(Icons.add),
+            onPressed: openCatalog,
+          ),
+        ],
       ),
-      body: ListView.separated(
-        itemCount: favorites.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
-        itemBuilder: (context, i) {
-          final song = favorites[i];
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
+      body: ValueListenableBuilder(
+        valueListenable: FavoritesStore.ids,
+        builder: (context, _, _) {
+          final songs = FavoritesStore.songs;
+          if (songs.isEmpty) {
+            return Center(
+              child: TextButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Aggiungi la prima canzone'),
+                onPressed: openCatalog,
+              ),
+            );
+          }
+          return ListView.separated(
+            itemCount: songs.length,
+            separatorBuilder: (_, _) => const Divider(height: 1),
+            itemBuilder: (context, i) => SongTile(
+              song: songs[i],
+              trailing: const Icon(Icons.chevron_right),
             ),
-            leading: AlbumCover(song: song, size: 64),
-            title: Text(song.title),
-            subtitle: Text(song.artist),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => SongScreen(song: song))),
           );
         },
       ),
+    );
+  }
+}
+
+/// Tutte le canzoni: il cuore le aggiunge o le toglie dai preferiti.
+class CatalogScreen extends StatelessWidget {
+  const CatalogScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text('Tutte le canzoni'),
+      ),
+      body: ListView.separated(
+        itemCount: catalog.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (context, i) => SongTile(
+          song: catalog[i],
+          trailing: FavoriteButton(song: catalog[i]),
+        ),
+      ),
+    );
+  }
+}
+
+class SongTile extends StatelessWidget {
+  final Song song;
+  final Widget trailing;
+
+  const SongTile({super.key, required this.song, required this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: AlbumCover(song: song, size: 64),
+      title: Text(song.title),
+      subtitle: Text(song.artist),
+      trailing: trailing,
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => SongScreen(song: song))),
+    );
+  }
+}
+
+/// Cuore pieno se la canzone è tra i preferiti; un tocco la aggiunge o la toglie.
+class FavoriteButton extends StatelessWidget {
+  final Song song;
+
+  const FavoriteButton({super.key, required this.song});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: FavoritesStore.ids,
+      builder: (context, _, _) {
+        final isFavorite = FavoritesStore.contains(song);
+        return IconButton(
+          tooltip: isFavorite ? 'Togli dai preferiti' : 'Aggiungi ai preferiti',
+          icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+          color: isFavorite ? Theme.of(context).colorScheme.primary : null,
+          onPressed: () => FavoritesStore.toggle(song),
+        );
+      },
     );
   }
 }
@@ -153,7 +238,10 @@ class SongScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.black),
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        actions: [FavoriteButton(song: song)],
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),

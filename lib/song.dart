@@ -64,8 +64,8 @@ const lifesWhatYouMakeIt = Song(
   durationSeconds: 221,
 );
 
-/// Le canzoni dell'elenco "I miei preferiti".
-const favorites = [
+/// Tutte le canzoni disponibili: ognuno sceglie le sue con il cuore.
+const catalog = [
   testSong,
   englishmanInNewYork,
   dontMugYourself,
