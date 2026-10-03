@@ -7,10 +7,6 @@ class Song {
   /// Video YouTube da cui viene riprodotto l'audio.
   final String youtubeId;
 
-  /// Pagina Musixmatch con la traduzione italiana (fonte provvisoria di test).
-  /// Se manca, si usa solo MyMemory.
-  final String? musixmatchUrl;
-
   /// Durata del video in secondi: serve a scegliere la versione giusta
   /// del testo quando ne esistono diverse (album, remix, live...).
   final int? durationSeconds;
@@ -23,7 +19,6 @@ class Song {
     required this.title,
     required this.artist,
     required this.youtubeId,
-    this.musixmatchUrl,
     this.durationSeconds,
     this.offsetSeconds = 0,
   });
@@ -35,7 +30,6 @@ class Song {
     title: title,
     artist: artist,
     youtubeId: id,
-    musixmatchUrl: musixmatchUrl,
     durationSeconds: durationSeconds,
     offsetSeconds: offsetSeconds,
   );
@@ -44,7 +38,6 @@ class Song {
     'title': title,
     'artist': artist,
     'youtubeId': youtubeId,
-    'musixmatchUrl': musixmatchUrl,
     'durationSeconds': durationSeconds,
     'offsetSeconds': offsetSeconds,
   };
@@ -53,7 +46,6 @@ class Song {
     title: json['title'] as String,
     artist: json['artist'] as String,
     youtubeId: json['youtubeId'] as String,
-    musixmatchUrl: json['musixmatchUrl'] as String?,
     durationSeconds: json['durationSeconds'] as int?,
     offsetSeconds: (json['offsetSeconds'] as num? ?? 0).toDouble(),
   );
@@ -63,8 +55,6 @@ const testSong = Song(
   title: 'Waiting for the Night',
   artist: 'Depeche Mode',
   youtubeId: 'RI_aU2nl8oY', // Remastered 2022, canale ufficiale Depeche Mode
-  musixmatchUrl:
-      'https://www.musixmatch.com/it/testo/Depeche-Mode/Waiting-for-the-Night/traduzione/italiano',
 );
 
 const englishmanInNewYork = Song(

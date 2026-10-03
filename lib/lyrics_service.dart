@@ -13,13 +13,8 @@ class LyricLine {
   LyricLine(this.time, this.english, [this.italian = '']);
 }
 
-/// Scarica il testo sincronizzato (LRCLIB) e le traduzioni
-/// (Musixmatch, con MyMemory come riserva per le righe mancanti).
+/// Scarica il testo sincronizzato (LRCLIB) e le traduzioni (MyMemory).
 class LyricsService {
-  static const _userAgent =
-      'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) '
-      'Chrome/130.0 Mobile Safari/537.36';
-
   /// Testo sincronizzato con le traduzioni già salvate sul telefono.
   /// Le traduzioni mancanti si completano poi con [fillTranslations].
   Future<List<LyricLine>> load(Song song) async {
@@ -32,8 +27,7 @@ class LyricsService {
     return lines;
   }
 
-  /// Scarica le traduzioni mancanti (Musixmatch, poi MyMemory a gruppi in
-  /// parallelo) e chiama [onProgress] ogni volta che ne arrivano di nuove.
+  /// Scarica le traduzioni mancanti (MyMemory, a gruppi in parallelo) e chiama [onProgress] ogni volta che ne arrivano di nuove.
   Future<void> fillTranslations(
     Song song,
     List<LyricLine> lines,
@@ -51,9 +45,6 @@ class LyricsService {
 
     bool isMissing(String key) => key.isNotEmpty && !cache.containsKey(key);
     if (!lines.any((l) => isMissing(_norm(l.english)))) return;
-
-    cache.addAll(await _fetchMusixmatch(song));
-    apply();
 
     // Righe uniche ancora da tradurre (i ritornelli si traducono una volta).
     final todo = {
@@ -110,14 +101,14 @@ class LyricsService {
       Uri.https('lrclib.net', '/api/search', params),
     );
     if (search.statusCode != 200) {
-      throw Exception('Testo non trovato (LRCLIB ${search.statusCode})');
+      throw Exception('Lyrics not found (LRCLIB ${search.statusCode})');
     }
     final synced = (jsonDecode(search.body) as List)
         .cast<Map>()
         .where((r) => r['syncedLyrics'] != null)
         .toList();
     if (synced.isEmpty) {
-      throw Exception('Testo sincronizzato non disponibile');
+      throw Exception('Synced lyrics not available');
     }
     final target = song.durationSeconds;
     if (target != null) {
@@ -138,34 +129,6 @@ class LyricsService {
       lines.add(LyricLine(Duration(milliseconds: ms), m[3]!));
     }
     return lines;
-  }
-
-  /// Legge la mappa "riga inglese -> riga italiana" dal JSON __NEXT_DATA__
-  /// della pagina Musixmatch. Fragile per natura: solo per test.
-  Future<Map<String, String>> _fetchMusixmatch(Song song) async {
-    final url = song.musixmatchUrl;
-    if (url == null) return {};
-    try {
-      final res = await http.get(
-        Uri.parse(url),
-        headers: {'User-Agent': _userAgent, 'Accept-Language': 'it'},
-      );
-      final m = RegExp(
-        r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>',
-        dotAll: true,
-      ).firstMatch(res.body);
-      if (m == null) return {};
-      final data =
-          jsonDecode(
-                m[1]!,
-              )['props']['pageProps']['data']['crowdTranslationGet']['data']
-              as Map;
-      return {
-        for (final e in data.entries) _norm(e.key as String): e.value as String,
-      };
-    } catch (_) {
-      return {};
-    }
   }
 
   Future<String?> _fetchMyMemory(String text) async {

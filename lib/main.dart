@@ -147,7 +147,7 @@ class FavoritesScreen extends StatelessWidget {
       builder: (context, songs, _) => Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.black,
-          title: const Text('I miei preferiti'),
+          title: const Text('My favorites'),
         ),
         // Pulsante grande e viola, sempre in vista finché c'è la lista.
         floatingActionButton: songs.isEmpty
@@ -157,7 +157,7 @@ class FavoritesScreen extends StatelessWidget {
                 foregroundColor: Colors.black,
                 icon: const Icon(Icons.add, size: 30),
                 label: const Text(
-                  'Aggiungi canzoni',
+                  'Add songs',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 onPressed: openCatalog,
@@ -197,14 +197,14 @@ class _EmptyPlaylist extends StatelessWidget {
             Icon(Icons.queue_music, size: 96, color: purple),
             const SizedBox(height: 24),
             const Text(
-              'Crea la tua playlist!',
+              'Create your playlist!',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             const Text(
-              'Cerca le canzoni che ami e aggiungile con il cuore: '
-              'le troverai qui, pronte da cantare.',
+              'Search for the songs you love and add them with the heart: '
+              "you'll find them here, ready to sing along.",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 17, color: Colors.white70),
             ),
@@ -223,7 +223,7 @@ class _EmptyPlaylist extends StatelessWidget {
                 ),
               ),
               icon: const Icon(Icons.add, size: 30),
-              label: const Text('Aggiungi canzoni'),
+              label: const Text('Add songs'),
               onPressed: onCreate,
             ),
           ],
@@ -276,14 +276,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
           autofocus: true,
           textInputAction: TextInputAction.search,
           decoration: const InputDecoration(
-            hintText: 'Cerca titolo o artista',
+            hintText: 'Search title or artist',
             border: InputBorder.none,
           ),
           onSubmitted: (_) => _search(),
         ),
         actions: [
           IconButton(
-            tooltip: 'Cerca',
+            tooltip: 'Search',
             icon: const Icon(Icons.search),
             onPressed: _search,
           ),
@@ -296,7 +296,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               builder: (context, snap) {
                 if (snap.hasError) {
                   return const Center(
-                    child: Text('Ricerca non riuscita. Controlla la rete.'),
+                    child: Text('Search failed. Check your connection.'),
                   );
                 }
                 final songs = snap.data;
@@ -305,7 +305,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 }
                 if (songs.isEmpty) {
                   return const Center(
-                    child: Text('Nessuna canzone con il testo sincronizzato.'),
+                    child: Text('No songs with synced lyrics found.'),
                   );
                 }
                 return _list(songs);
@@ -331,7 +331,7 @@ Future<Song?> _readySong(BuildContext context, Song song) async {
   } catch (_) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Video non trovato per questa canzone')),
+        const SnackBar(content: Text('No video found for this song')),
       );
     }
     return null;
@@ -378,7 +378,7 @@ class FavoriteButton extends StatelessWidget {
       builder: (context, _, _) {
         final isFavorite = FavoritesStore.contains(song);
         return IconButton(
-          tooltip: isFavorite ? 'Togli dai preferiti' : 'Aggiungi ai preferiti',
+          tooltip: isFavorite ? 'Remove from favorites' : 'Add to favorites',
           icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
           color: isFavorite ? Theme.of(context).colorScheme.primary : null,
           onPressed: () async {

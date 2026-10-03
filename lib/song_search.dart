@@ -14,7 +14,7 @@ class SongSearch {
       Uri.https('lrclib.net', '/api/search', {'q': query}),
     );
     if (res.statusCode != 200) {
-      throw Exception('Ricerca non riuscita (LRCLIB ${res.statusCode})');
+      throw Exception('Search failed (LRCLIB ${res.statusCode})');
     }
     final songs = <String, Song>{};
     final copies = <String, int>{};
@@ -51,7 +51,7 @@ class SongSearch {
       final videos = (await yt.search.search(
         '${song.artist} ${song.title}',
       )).where((v) => !v.isLive).take(8).toList();
-      if (videos.isEmpty) throw Exception('Video non trovato');
+      if (videos.isEmpty) throw Exception('Video not found');
       var best = videos.first;
       final target = song.durationSeconds;
       if (target != null) {

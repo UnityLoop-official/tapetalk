@@ -176,7 +176,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
     );
   }
 
-  String _speedLabel(double s) => '${s.toString().replaceAll('.', ',')}×';
+  String _speedLabel(double s) => '$s×';
 
   @override
   void dispose() {
@@ -221,7 +221,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
                 children: [
                   _SmallControl(
                     icon: Icons.replay,
-                    label: 'Ricomincia',
+                    label: 'Restart',
                     onPressed: _restart,
                   ),
                   const SizedBox(width: 32),
@@ -272,7 +272,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Impossibile caricare il testo.\nControlla la connessione.',
+                "Couldn't load the lyrics.\nCheck your connection.",
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white, fontSize: 18),
               ),
@@ -286,7 +286,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
               FilledButton.icon(
                 onPressed: _loadLyrics,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Riprova'),
+                label: const Text('Try again'),
               ),
             ],
           ),

@@ -69,8 +69,8 @@ flowchart LR
 - **Version number** at the bottom of the home screen, so you can tell which
   version is on each phone.
 
-> The app's interface is currently in Italian, except for the
-> *My favorites* button.
+The interface is in English; the translations under the lyrics are in
+Italian.
 
 ## Where the data comes from
 
@@ -78,13 +78,14 @@ flowchart LR
 |---|---|
 | Song search and synced lyrics | [LRCLIB](https://lrclib.net) |
 | Video and audio | YouTube: search with [youtube_explode_dart](https://pub.dev/packages/youtube_explode_dart), playback with the embedded player |
-| Translations | Musixmatch (if configured for the song), otherwise [MyMemory](https://mymemory.translated.net) |
+| Translations | [MyMemory](https://mymemory.translated.net) |
 | Covers | iTunes Search API |
 
-> ⚠️ Experimental project for personal use. Reading translations from
-> Musixmatch is temporary and does not comply with their terms of use: do not
-> use it in a distributed app. The video search also reads YouTube's pages
-> without the official API and may stop working if YouTube changes them.
+> ⚠️ Experimental project for personal use. Song lyrics and their
+> translations are copyrighted: LRCLIB and MyMemory do not provide a license
+> to display them, so a distributed version of the app would need licensed
+> lyrics. The video search also reads YouTube's pages without the official
+> API and may stop working if YouTube changes them.
 
 ## Getting started
 
@@ -102,6 +103,8 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.7.1 | Musixmatch removed: translations only from MyMemory |
+| 1.7.0 | Whole interface in English |
 | 1.6.1 | *My favorites* button in English |
 | 1.6.0 | Words turn purple as they are sung |
 | 1.5.0 | Song lines in the logo; purple button and invitation to create a playlist |
