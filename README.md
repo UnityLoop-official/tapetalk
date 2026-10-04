@@ -73,6 +73,10 @@ flowchart LR
   playlist *My Shazam Tracks*. The import screen shows the Spotify and Shazam
   logos and whether the apps are installed on the phone.
   <br><img src="docs/screenshots/import.png" alt="Import a playlist" width="180">
+- **Tap a song and sing**: the lyrics open straight away and the song
+  starts. The heart in the top bar adds or removes it from the playlist.
+- **Tap a line to hear it again**: the song jumps to that line, handy for
+  repeating a hard phrase.
 - **Lyrics in time with the music**: the current line is highlighted and
   **each word turns purple as it is sung**. Line timings come from LRCLIB,
   choosing the version of the lyrics whose duration matches the video. When
@@ -84,6 +88,9 @@ flowchart LR
 - **Eye button** under the video: the video starts **hidden**, so nothing
   distracts while reading and listening, and opens only if you tap
   *Show video*. Hiding it doesn't stop it: the music keeps playing.
+- **Lyrics timing by ear**: for videos without captions, which can't be
+  aligned automatically, the timer button in the top bar moves the lyrics
+  half a second earlier or later. The setting is saved for each song.
 - **Countdown before the lyrics**: during the intro, and during long
   instrumental breaks, a purple bar fills up until the singing starts; in
   the last 3 seconds it turns into a big **3 – 2 – 1**, followed by the
@@ -96,6 +103,8 @@ flowchart LR
   (*Let it be* – The Beatles, *We will rock you* – Queen, *Imagine* – John
   Lennon, *Stayin' alive* – Bee Gees, *I will survive* – Gloria Gaynor).
   The app icon uses the same mouth-box, without the bubble.
+- **Swipe back**: drag your thumb from the left edge of the screen to the
+  right to go back to the previous page; the back arrow is still there.
 - **Version number** at the bottom of the home screen, so you can tell which
   version is on each phone.
 
@@ -136,6 +145,11 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.16.2 | The speech bubble is drawn in front of the mouth, so its tip shows |
+| 1.16.1 | Bigger logo in the app icon |
+| 1.16.0 | Lyrics timing adjustment, saved for each song |
+| 1.15.1 | Swipe back from the left edge on every page |
+| 1.15.0 | Tapping a song opens the lyrics and plays it; tap a line to jump to it |
 | 1.14.3 | The TapeTalk logo pops up for an instant after the 3-2-1 countdown |
 | 1.14.2 | The video starts hidden; tap the eye to show it |
 | 1.14.1 | No YouTube captions inside the video; songs always start from the beginning; Restart and speed labels are tappable |
@@ -167,7 +181,7 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 ## Project structure
 
-- `lib/main.dart` – home screen, playlist, search, song screen
+- `lib/main.dart` – home screen, playlist, search
 - `lib/favorites_store.dart` – the playlist, saved on the phone
 - `lib/song_search.dart` – song search (LRCLIB) and video search (YouTube)
 - `lib/playlist_import.dart`, `lib/import_screen.dart` – Spotify playlist import

@@ -41,7 +41,7 @@ void main() {
   testWidgets('icona completa', (t) async {
     await render(
       t,
-      _icon(logoSize: 720, bg: purple),
+      _icon(logoSize: 900, bg: purple),
       '../assets/icon/icon.png',
     );
   });
@@ -50,7 +50,7 @@ void main() {
     // Le icone adattive mostrano solo il 66% centrale: logo più piccolo.
     await render(
       t,
-      _icon(logoSize: 560, bg: Colors.transparent),
+      _icon(logoSize: 880, bg: Colors.transparent),
       '../assets/icon/foreground.png',
     );
   });

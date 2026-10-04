@@ -189,8 +189,6 @@ class _MouthPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
 
-    if (withBubble) _bubble(canvas, ink, hole, line(color, 3));
-
     final center = withBubble ? _boxCenter : _iconBoxCenter;
     canvas.save();
     canvas.translate(center.dx, center.dy);
@@ -257,6 +255,9 @@ class _MouthPainter extends CustomPainter {
     }
     canvas.restore();
     canvas.restore();
+
+    // Il fumetto per ultimo, davanti alla bocca: così la punta si vede.
+    if (withBubble) _bubble(canvas, ink, hole, line(color, 3));
   }
 
   /// Dente di sopra, arrotondato in basso; quello scheggiato ha una tacca.

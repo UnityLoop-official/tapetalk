@@ -29,6 +29,12 @@ class TapeTalkApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(useMaterial3: true).copyWith(
         scaffoldBackgroundColor: Colors.black,
+        // Swipe back: trascinando il pollice dal bordo sinistro verso destra
+        // si torna alla pagina precedente, che segue il dito. La freccia in
+        // alto resta.
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {TargetPlatform.android: CupertinoPageTransitionsBuilder()},
+        ),
         appBarTheme: const AppBarTheme(
           systemOverlayStyle: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
@@ -164,12 +170,26 @@ class FavoritesScreen extends StatelessWidget {
                 ),
           body: songs.isEmpty
               ? _EmptyPlaylist(onCreate: openCatalog)
-              : ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  itemCount: songs.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (context, i) =>
-                      _RemovableSongTile(song: songs[i]),
+              : Stack(
+                  children: [
+                    ListView.separated(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      itemCount: songs.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, i) =>
+                          _RemovableSongTile(song: songs[i]),
+                    ),
+                    // Bordo sinistro libero per lo swipe back: senza, il
+                    // trascinamento per togliere una canzone si prende il
+                    // gesto e non si torna indietro.
+                    const Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 24,
+                      child: AbsorbPointer(child: SizedBox.expand()),
+                    ),
+                  ],
                 ),
         );
       },
@@ -694,9 +714,21 @@ class SongTile extends StatelessWidget {
       onTap: () async {
         final ready = await _readySong(context, song);
         if (ready == null || !context.mounted) return;
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => SongScreen(song: ready)));
+        // Si apre subito il testo e la canzone parte. Nella barra in alto
+        // c'è il cuore; se la si toglie dalla playlist si torna alla lista.
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => LyricsScreen(
+              song: ready,
+              actions: [
+                FavoriteButton(
+                  song: ready,
+                  onRemoved: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          ),
+        );
       },
     );
   }
@@ -731,60 +763,6 @@ class FavoriteButton extends StatelessWidget {
           },
         );
       },
-    );
-  }
-}
-
-/// Scheda della canzone: titolo, artista e Play.
-class SongScreen extends StatelessWidget {
-  final Song song;
-
-  const SongScreen({super.key, required this.song});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        actions: [
-          // Tolta dai preferiti: si torna alla lista con gli altri.
-          FavoriteButton(
-            song: song,
-            onRemoved: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                song.title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                song.artist,
-                style: const TextStyle(fontSize: 20, color: Colors.grey),
-              ),
-              const SizedBox(height: 48),
-              IconButton.filled(
-                iconSize: 64,
-                icon: const Icon(Icons.play_arrow),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => LyricsScreen(song: song)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

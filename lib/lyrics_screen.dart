@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import 'lyrics_service.dart';
@@ -12,7 +13,10 @@ import 'word_timing_service.dart';
 class LyricsScreen extends StatefulWidget {
   final Song song;
 
-  const LyricsScreen({super.key, required this.song});
+  /// Pulsanti nella barra in alto (es. il cuore della playlist).
+  final List<Widget> actions;
+
+  const LyricsScreen({super.key, required this.song, this.actions = const []});
 
   @override
   State<LyricsScreen> createState() => _LyricsScreenState();
@@ -54,6 +58,94 @@ class _LyricsScreenState extends State<LyricsScreen> {
   /// Audio tolto per farlo partire (il video muto parte sempre): si
   /// rimette appena il video suona.
   bool _mutedToStart = false;
+
+  /// Spostamento del testo scelto da chi ascolta (in secondi, positivo =
+  /// il testo arriva più tardi), salvato per ogni video. Serve per i video
+  /// senza sottotitoli, che non si possono allineare da soli.
+  double _userOffset = 0;
+
+  String get _offsetKey => 'user_offset:${widget.song.youtubeId}';
+
+  /// Spostamento totale: quello della canzone più quello scelto a orecchio.
+  double get _offset => widget.song.offsetSeconds + _userOffset;
+
+  Future<void> _loadUserOffset() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getDouble(_offsetKey) ?? 0;
+    if (mounted) setState(() => _userOffset = saved);
+  }
+
+  Future<void> _setUserOffset(double value) async {
+    setState(() => _userOffset = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_offsetKey, value);
+  }
+
+  /// Pannello per spostare il testo di mezzo secondo alla volta.
+  void _showTiming() {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, refresh) {
+          Future<void> change(double v) async {
+            await _setUserOffset(double.parse(v.toStringAsFixed(1)));
+            refresh(() {});
+          }
+
+          final v = _userOffset;
+          final label = v == 0
+              ? 'In time with the video'
+              : 'Lyrics ${v > 0 ? 'later' : 'earlier'} by '
+                    '${v.abs().toStringAsFixed(1)}s';
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Lyrics timing',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Lyrics before the voice? Tap Later.\n'
+                    'Lyrics after the voice? Tap Earlier.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.tonal(
+                          onPressed: () => change(v - 0.5),
+                          child: const Text('Earlier −0.5s'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => change(v + 0.5),
+                          child: const Text('Later +0.5s'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(label, style: const TextStyle(fontSize: 16)),
+                  TextButton(
+                    onPressed: v == 0 ? null : () => change(0),
+                    child: const Text('Reset'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   /// Sottotitoli di YouTube già tolti dal video.
   bool _captionsOff = false;
@@ -108,6 +200,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
       (_) => _ensureStarted(),
     );
     _loadLyrics();
+    _loadUserOffset();
     _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
   }
 
@@ -235,7 +328,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
   Future<void> _tick() async {
     final lines = _lines;
     if (lines == null || lines.isEmpty) return;
-    final seconds = await _player.currentTime - widget.song.offsetSeconds;
+    final seconds = await _player.currentTime - _offset;
     final pos = Duration(milliseconds: (seconds * 1000).round());
     var idx = -1;
     for (var i = 0; i < lines.length; i++) {
@@ -316,6 +409,18 @@ class _LyricsScreenState extends State<LyricsScreen> {
     }
   }
 
+  /// Salta all'inizio di [line] (un attimo prima, per non perdere la prima
+  /// parola) e fa ripartire la canzone, anche se era in pausa.
+  Future<void> _jumpTo(LyricLine line) async {
+    final seconds = line.time.inMilliseconds / 1000 + _offset - 0.3;
+    _userPaused = false;
+    await _player.seekTo(
+      seconds: seconds < 0 ? 0 : seconds,
+      allowSeekAhead: true,
+    );
+    await _player.playVideo();
+  }
+
   void _pause() {
     _userPaused = true;
     _player.pauseVideo();
@@ -370,6 +475,14 @@ class _LyricsScreenState extends State<LyricsScreen> {
           '${widget.song.artist} – ${widget.song.title}',
           style: const TextStyle(fontSize: 16),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Lyrics timing',
+            icon: const Icon(Icons.av_timer),
+            onPressed: _showTiming,
+          ),
+          ...widget.actions,
+        ],
       ),
       // SafeArea: i controlli restano sopra la barra di navigazione di Android.
       body: SafeArea(
@@ -516,38 +629,45 @@ class _LyricsScreenState extends State<LyricsScreen> {
           if (line.english.isEmpty) {
             return SizedBox(key: _keys[i], height: 24);
           }
-          return AnimatedOpacity(
+          // Toccando una riga la canzone salta lì: per riascoltare una frase.
+          return GestureDetector(
             key: _keys[i],
-            duration: const Duration(milliseconds: 300),
-            opacity: active ? 1 : 0.35,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 300),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: active ? 26 : 20,
-                      fontWeight: active ? FontWeight.bold : FontWeight.normal,
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _jumpTo(line),
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 300),
+              opacity: active ? 1 : 0.35,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 300),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: active ? 26 : 20,
+                        fontWeight: active
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                      child: active
+                          ? _karaokeText(line.english)
+                          : Text(line.english),
                     ),
-                    child: active
-                        ? _karaokeText(line.english)
-                        : Text(line.english),
-                  ),
-                  if (line.italian.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        line.italian,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
+                    if (line.italian.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          line.italian,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
