@@ -61,6 +61,7 @@ flowchart LR
   one; then *Rename*, *Clear* (remove all songs) and *Delete* the open
   playlist, with confirmation. The heart, the search and the import work on
   the open playlist.
+  <br><img src="docs/screenshots/menu.png" alt="Playlist menu" width="180">
 - **Remove songs** from the playlist by swiping them to the left (or with
   the heart): a dialog asks for confirmation, and **Undo** puts them back.
   Removing a song from its own screen takes you back to the playlist.
