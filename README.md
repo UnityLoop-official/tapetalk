@@ -91,10 +91,12 @@ flowchart LR
 - **Lyrics timing by ear**: for videos without captions, which can't be
   aligned automatically, the timer button in the top bar moves the lyrics
   half a second earlier or later. The setting is saved for each song.
+  <br><img src="docs/screenshots/timing.png" alt="Lyrics timing panel" width="180">
 - **Countdown before the lyrics**: during the intro, and during long
   instrumental breaks, a purple bar fills up until the singing starts; in
   the last 3 seconds it turns into a big **3 – 2 – 1**, followed by the
   TapeTalk logo for an instant as the singing starts.
+  <br><img src="docs/screenshots/countdown.png" alt="Intro bar, 3-2-1 countdown and logo" width="600">
 - **Italian translation** under every line.
 - Pause / Play, **Restart** and playback **speed** (1× · 0.85× · 0.75×)
   without distorting the voice.
