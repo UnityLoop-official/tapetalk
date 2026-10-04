@@ -5,6 +5,7 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import 'lyrics_service.dart';
 import 'song.dart';
+import 'video_sync.dart';
 import 'word_timing_service.dart';
 
 class LyricsScreen extends StatefulWidget {
@@ -31,6 +32,13 @@ class _LyricsScreenState extends State<LyricsScreen> {
 
   /// Parole già cantate nella riga corrente (diventano viola).
   int _sung = 0;
+
+  /// Attesa prima del testo (intro) o in una pausa lunga senza canto:
+  /// si mostra una barra e, negli ultimi 3 secondi, il conto alla rovescia.
+  _Wait? _wait;
+
+  /// Durata e sottotitoli del video (vedi VideoSync).
+  VideoSync _sync = VideoSync.empty;
   bool _playing = true;
 
   /// A volte il WebView non fa partire il video da solo: lo rilancio
@@ -103,7 +111,22 @@ class _LyricsScreenState extends State<LyricsScreen> {
     setState(() => _error = null);
     try {
       final service = LyricsService();
-      final lines = await service.load(widget.song);
+      // Durata e sottotitoli del video: per scegliere la versione giusta del
+      // testo e metterlo a tempo con il video. Se tardano, si va avanti senza.
+      final sync = await VideoSync.load(
+        widget.song.youtubeId,
+      ).timeout(const Duration(seconds: 8), onTimeout: () => VideoSync.empty);
+      var lines = await service.load(widget.song, videoSeconds: sync.seconds);
+      // Il video può essere spostato rispetto al testo (un'intro più lunga)
+      // o montato in modo diverso: le righe prendono i tempi del video.
+      final times = sync.alignedTimes(lines);
+      if (times != null) {
+        lines = [
+          for (var i = 0; i < lines.length; i++)
+            LyricLine(times[i], lines[i].english, lines[i].italian),
+        ];
+      }
+      _sync = sync;
       if (!mounted) return;
       _keys
         ..clear()
@@ -160,8 +183,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
         milliseconds: (widget.song.offsetSeconds * 1000).round(),
       );
       final timed = [
-        for (final w in await WordTimingService.load(widget.song.youtubeId))
-          TimedWord(w.word, w.time - offset),
+        for (final w in _sync.words) TimedWord(w.word, w.time - offset),
       ];
       if (timed.isEmpty || !mounted || _lines != lines) return;
       setState(() {
@@ -195,6 +217,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
     for (var i = 0; i < lines.length; i++) {
       if (lines[i].time <= pos) idx = i;
     }
+    _updateWait(lines, idx, pos);
     final starts = idx >= 0 ? _wordStarts[idx] : const <Duration>[];
     final sung = starts.where((t) => t <= pos).length;
     if (idx == _current && sung != _sung && mounted) {
@@ -221,6 +244,35 @@ class _LyricsScreenState extends State<LyricsScreen> {
           curve: Curves.easeInOut,
         );
       }
+    }
+  }
+
+  /// C'è un'attesa se la prossima riga cantata è lontana: almeno 4 secondi
+  /// di intro prima della prima riga, almeno 8 secondi in una pausa a metà
+  /// canzone (contati da quando finisce di essere cantata la riga prima).
+  void _updateWait(List<LyricLine> lines, int idx, Duration pos) {
+    _Wait? wait;
+    final next = lines.indexWhere((l) => l.english.trim().isNotEmpty, idx + 1);
+    if (next >= 0) {
+      final Duration start;
+      if (idx < 0) {
+        start = Duration.zero;
+      } else if (lines[idx].english.trim().isEmpty) {
+        start = lines[idx].time;
+      } else {
+        final words = _wordStarts[idx];
+        start =
+            (words.isEmpty ? lines[idx].time : words.last) +
+            const Duration(milliseconds: 1500);
+      }
+      final end = lines[next].time;
+      final minimum = Duration(seconds: idx < 0 ? 4 : 8);
+      if (end - start >= minimum && pos >= start && pos < end) {
+        wait = _Wait(start, end, pos, intro: idx < 0);
+      }
+    }
+    if (mounted && (wait != null || _wait != null)) {
+      setState(() => _wait = wait);
     }
   }
 
@@ -308,7 +360,20 @@ class _LyricsScreenState extends State<LyricsScreen> {
               label: Text(_videoHidden ? 'Show video' : 'Hide video'),
               onPressed: () => setState(() => _videoHidden = !_videoHidden),
             ),
-            Expanded(child: _buildLyrics()),
+            Expanded(
+              child: Stack(
+                children: [
+                  _buildLyrics(),
+                  if (_wait case final wait?)
+                    Positioned(
+                      top: 16,
+                      left: 20,
+                      right: 20,
+                      child: _WaitIndicator(wait),
+                    ),
+                ],
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.only(bottom: 24, top: 8),
               child: Row(
@@ -441,6 +506,87 @@ class _LyricsScreenState extends State<LyricsScreen> {
           );
         }),
       ),
+    );
+  }
+}
+
+class _Wait {
+  final Duration start;
+  final Duration end;
+  final Duration pos;
+  final bool intro;
+
+  const _Wait(this.start, this.end, this.pos, {required this.intro});
+
+  Duration get remaining => end - pos;
+}
+
+/// Durante l'attesa una barra viola che si riempie fino all'arrivo del
+/// testo; negli ultimi 3 secondi, al suo posto, 3 - 2 - 1 grandi.
+class _WaitIndicator extends StatelessWidget {
+  final _Wait wait;
+
+  const _WaitIndicator(this.wait);
+
+  static const _countdown = Duration(seconds: 3);
+
+  @override
+  Widget build(BuildContext context) {
+    final purple = Theme.of(context).colorScheme.primary;
+    final remaining = wait.remaining;
+    final Widget child;
+    if (remaining <= _countdown) {
+      final n = (remaining.inMilliseconds / 1000).ceil().clamp(1, 3);
+      child = AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
+        child: Text(
+          '$n',
+          key: ValueKey(n),
+          style: TextStyle(
+            color: purple,
+            fontSize: 72,
+            fontWeight: FontWeight.w800,
+            height: 1,
+          ),
+        ),
+      );
+    } else {
+      // La barra si riempie fino all'inizio del conto alla rovescia.
+      final total = wait.end - wait.start - _countdown;
+      final progress = total.inMilliseconds <= 0
+          ? 1.0
+          : ((wait.pos - wait.start).inMilliseconds / total.inMilliseconds)
+                .clamp(0.0, 1.0);
+      final seconds = (remaining.inMilliseconds / 1000).ceil();
+      child = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '♪ ${wait.intro ? 'Intro' : 'Instrumental'} · ${seconds}s',
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              color: purple,
+              backgroundColor: Colors.white12,
+            ),
+          ),
+        ],
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      alignment: Alignment.center,
+      child: child,
     );
   }
 }

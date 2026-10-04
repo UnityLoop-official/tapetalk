@@ -16,10 +16,13 @@ class LyricLine {
 /// Scarica il testo sincronizzato (LRCLIB) e le traduzioni (MyMemory).
 class LyricsService {
   /// Testo sincronizzato con le traduzioni già salvate sul telefono.
-  /// Le traduzioni mancanti si completano poi con [fillTranslations].
-  Future<List<LyricLine>> load(Song song) async {
+  /// [videoSeconds] è la durata vera del video: serve a scegliere la
+  /// versione del testo giusta (album, radio edit, live... hanno tempi
+  /// diversi). Le traduzioni mancanti si completano poi con
+  /// [fillTranslations].
+  Future<List<LyricLine>> load(Song song, {int? videoSeconds}) async {
     final prefs = await SharedPreferences.getInstance();
-    final lines = await _loadSyncedLyrics(song, prefs);
+    final lines = await _loadSyncedLyrics(song, prefs, videoSeconds);
     final cache = _readCache(song, prefs);
     for (final line in lines) {
       line.italian = cache[_norm(line.english)] ?? '';
@@ -87,26 +90,32 @@ class LyricsService {
   Future<List<LyricLine>> _loadSyncedLyrics(
     Song song,
     SharedPreferences prefs,
+    int? videoSeconds,
   ) async {
-    final key = 'lrc:${song.artist}:${song.title}';
+    // "lrc2": i testi salvati prima venivano scelti senza guardare la
+    // durata del video, e alcuni sono della versione sbagliata.
+    final target = videoSeconds ?? song.durationSeconds;
+    final key = 'lrc2:${song.artist}:${song.title}:${target ?? ''}';
     var lrc = prefs.getString(key);
     if (lrc == null) {
-      lrc = await _fetchLrc(song);
+      lrc = await _fetchLrc(song, target);
       await prefs.setString(key, lrc);
     }
     return _parseLrc(lrc);
   }
 
-  Future<String> _fetchLrc(Song song) async {
+  Future<String> _fetchLrc(Song song, int? target) async {
     final params = {'artist_name': song.artist, 'track_name': song.title};
-    final res = await http.get(Uri.https('lrclib.net', '/api/get', params));
-    if (res.statusCode == 200) {
-      final lrc = (jsonDecode(res.body) as Map)['syncedLyrics'] as String?;
-      if (lrc != null) return lrc;
+    if (target == null) {
+      final res = await http.get(Uri.https('lrclib.net', '/api/get', params));
+      if (res.statusCode == 200) {
+        final lrc = (jsonDecode(res.body) as Map)['syncedLyrics'] as String?;
+        if (lrc != null) return lrc;
+      }
     }
 
-    // Ricerca: tra le versioni sincronizzate sceglie quella con la durata
-    // più vicina al video.
+    // Tra le versioni sincronizzate sceglie quella con la durata più vicina
+    // al video.
     final search = await http.get(
       Uri.https('lrclib.net', '/api/search', params),
     );
@@ -120,7 +129,6 @@ class LyricsService {
     if (synced.isEmpty) {
       throw Exception('Synced lyrics not available');
     }
-    final target = song.durationSeconds;
     if (target != null) {
       num gap(Map r) => ((r['duration'] as num? ?? 0) - target).abs();
       synced.sort((a, b) => gap(a).compareTo(gap(b)));

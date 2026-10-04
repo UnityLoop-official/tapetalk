@@ -74,13 +74,19 @@ flowchart LR
   logos and whether the apps are installed on the phone.
   <br><img src="docs/screenshots/import.png" alt="Import a playlist" width="180">
 - **Lyrics in time with the music**: the current line is highlighted and
-  **each word turns purple as it is sung**. Line timings come from LRCLIB.
-  When the video has YouTube's automatic English captions, each word uses its
-  real timing from them; otherwise word timings are estimated from the length
-  of the words.
+  **each word turns purple as it is sung**. Line timings come from LRCLIB,
+  choosing the version of the lyrics whose duration matches the video. When
+  the video has English captions, every line is aligned to the video itself,
+  so lyrics stay in time even when the video has a longer intro or a
+  different edit. With YouTube's automatic captions each word also uses its
+  real timing; otherwise word timings are estimated from the length of the
+  words.
 - **Eye button** under the video to hide it while reading and listening: the
   video is only hidden, not stopped, so the music keeps playing and the lyrics
   get more room.
+- **Countdown before the lyrics**: during the intro, and during long
+  instrumental breaks, a purple bar fills up until the singing starts; in
+  the last 3 seconds it turns into a big **3 – 2 – 1**.
 - **Italian translation** under every line.
 - Pause / Play, **Restart** and playback **speed** (1× · 0.85× · 0.75×)
   without distorting the voice.
@@ -101,7 +107,7 @@ Italian.
 |---|---|
 | Song search and synced lyrics | [LRCLIB](https://lrclib.net) |
 | Video and audio | YouTube: search with [youtube_explode_dart](https://pub.dev/packages/youtube_explode_dart), playback with the embedded player |
-| Word timings | YouTube's automatic captions, when available |
+| Line and word timings | YouTube captions of the video (written or automatic), when available |
 | Playlist import | Spotify's public embed page for the playlist; Shazam's public song pages |
 | Translations | [MyMemory](https://mymemory.translated.net) |
 | Covers | iTunes Search API |
@@ -129,6 +135,8 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.14.0 | Progress bar and 3-2-1 countdown during the intro and long instrumental breaks |
+| 1.13.0 | Lyrics aligned to the video: right lyrics version, line-by-line alignment with the video captions |
 | 1.12.0 | Several playlists with a menu to switch, create, rename, clear and delete them; simpler bottom bar |
 | 1.11.1 | Import button moved into the bottom bar |
 | 1.11.0 | Fixed bottom bar in the playlist with the Add songs button |
@@ -163,6 +171,7 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 - `lib/song.dart` – song model and suggested songs
 - `lib/lyrics_screen.dart` – lyrics in time, purple words and controls
 - `lib/lyrics_service.dart` – lyrics and translations
+- `lib/video_sync.dart` – video duration and captions, line alignment to the video
 - `lib/word_timing_service.dart` – real word timings from YouTube's automatic captions
 - `lib/cover_service.dart` – covers
 - `lib/mouth_logo.dart` – mouth-box logo with the song lines
