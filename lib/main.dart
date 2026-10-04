@@ -141,7 +141,6 @@ class FavoritesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final purple = Theme.of(context).colorScheme.primary;
     void openCatalog() => Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const CatalogScreen()));
@@ -159,46 +158,137 @@ class FavoritesScreen extends StatelessWidget {
             ),
           ],
         ),
-        // Pulsante grande e viola, sempre in vista finché c'è la lista.
-        floatingActionButton: songs.isEmpty
+        // Barra fissa in basso, come quella del sito di Roomee sul telefono.
+        bottomNavigationBar: songs.isEmpty
             ? null
-            : FloatingActionButton.extended(
-                backgroundColor: purple,
-                foregroundColor: Colors.black,
-                icon: const Icon(Icons.add, size: 30),
-                label: const Text(
-                  'Add songs',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                onPressed: openCatalog,
+            : _PlaylistBar(
+                songCount: songs.length,
+                onAdd: openCatalog,
+                onImport: () => _openImport(context),
               ),
         body: songs.isEmpty
             ? _EmptyPlaylist(onCreate: openCatalog)
-            : Column(
+            : ListView.separated(
+                padding: const EdgeInsets.only(bottom: 8),
+                itemCount: songs.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, i) => _RemovableSongTile(song: songs[i]),
+              ),
+      ),
+    );
+  }
+}
+
+/// Barra fissa in basso, sul modello di quella di roomee.dk sul telefono:
+/// logo in un quadratino, nome e sottotitolo, pulsanti a pillola a destra
+/// (importare da Spotify o Shazam e aggiungere canzoni).
+class _PlaylistBar extends StatelessWidget {
+  final int songCount;
+  final VoidCallback onAdd;
+  final VoidCallback onImport;
+
+  const _PlaylistBar({
+    required this.songCount,
+    required this.onAdd,
+    required this.onImport,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final purple = Theme.of(context).colorScheme.primary;
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x24000000),
+              blurRadius: 24,
+              offset: Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: purple,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: MouthLogo(
+                size: 30,
+                color: Colors.black,
+                background: purple,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Importare si può anche con la lista già piena.
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: _ImportButton(
-                        onPressed: () => _openImport(context),
-                      ),
+                  const Text(
+                    'TapeTalk',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: ListView.separated(
-                      // Spazio in fondo per non coprire l'ultima canzone.
-                      padding: const EdgeInsets.only(bottom: 96),
-                      itemCount: songs.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (context, i) =>
-                          _RemovableSongTile(song: songs[i]),
-                    ),
+                  Text(
+                    songCount == 1 ? '1 song' : '$songCount songs',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.black54, fontSize: 11),
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: 6),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: purple.withValues(alpha: 0.35),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              icon: const Icon(Icons.playlist_add, size: 20),
+              label: const Text('Import'),
+              onPressed: onImport,
+            ),
+            const SizedBox(width: 6),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: purple,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              icon: const Icon(Icons.add, size: 20),
+              label: const Text('Add songs'),
+              onPressed: onAdd,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -53,7 +53,10 @@ flowchart LR
 - **Search for new songs** by title or artist and add them with the heart.
   Only songs with synced lyrics are shown; the right YouTube video is picked
   by matching the song's duration.
-- **Big purple "Add songs" button**, always visible in the playlist.
+- **Bar fixed at the bottom of the playlist** with the TapeTalk logo, the
+  number of songs, an **Import** button (Spotify or Shazam) and the purple
+  **Add songs** button, always visible while scrolling (modelled on the
+  mobile bar of roomee.dk).
 - **Remove songs** from the playlist by swiping them to the left (or with
   the heart): a dialog asks for confirmation, and **Undo** puts them back.
   Removing a song from its own screen takes you back to the playlist.
@@ -121,6 +124,8 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.11.1 | Import button moved into the bottom bar |
+| 1.11.0 | Fixed bottom bar in the playlist with the Add songs button |
 | 1.10.2 | Import a plain *Artist - Title* list; retries when LRCLIB is busy; better title and accent matching |
 | 1.10.1 | Fix: Shazam links imported the wrong song; imported songs must match title and artist |
 | 1.10.0 | Import Shazam song links; Spotify and Shazam logos; back to the playlist after removing a song |
