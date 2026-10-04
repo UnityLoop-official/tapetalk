@@ -81,12 +81,13 @@ flowchart LR
   different edit. With YouTube's automatic captions each word also uses its
   real timing; otherwise word timings are estimated from the length of the
   words.
-- **Eye button** under the video to hide it while reading and listening: the
-  video is only hidden, not stopped, so the music keeps playing and the lyrics
-  get more room.
+- **Eye button** under the video: the video starts **hidden**, so nothing
+  distracts while reading and listening, and opens only if you tap
+  *Show video*. Hiding it doesn't stop it: the music keeps playing.
 - **Countdown before the lyrics**: during the intro, and during long
   instrumental breaks, a purple bar fills up until the singing starts; in
-  the last 3 seconds it turns into a big **3 – 2 – 1**.
+  the last 3 seconds it turns into a big **3 – 2 – 1**, followed by the
+  TapeTalk logo for an instant as the singing starts.
 - **Italian translation** under every line.
 - Pause / Play, **Restart** and playback **speed** (1× · 0.85× · 0.75×)
   without distorting the voice.
@@ -135,6 +136,9 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.14.3 | The TapeTalk logo pops up for an instant after the 3-2-1 countdown |
+| 1.14.2 | The video starts hidden; tap the eye to show it |
+| 1.14.1 | No YouTube captions inside the video; songs always start from the beginning; Restart and speed labels are tappable |
 | 1.14.0 | Progress bar and 3-2-1 countdown during the intro and long instrumental breaks |
 | 1.13.0 | Lyrics aligned to the video: right lyrics version, line-by-line alignment with the video captions |
 | 1.12.0 | Several playlists with a menu to switch, create, rename, clear and delete them; simpler bottom bar |

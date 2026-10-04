@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import 'lyrics_service.dart';
+import 'mouth_logo.dart';
 import 'song.dart';
 import 'video_sync.dart';
 import 'word_timing_service.dart';
@@ -37,6 +38,9 @@ class _LyricsScreenState extends State<LyricsScreen> {
   /// si mostra una barra e, negli ultimi 3 secondi, il conto alla rovescia.
   _Wait? _wait;
 
+  /// Logo che compare per un istante alla fine del conto alla rovescia.
+  bool _go = false;
+
   /// Durata e sottotitoli del video (vedi VideoSync).
   VideoSync _sync = VideoSync.empty;
   bool _playing = true;
@@ -51,9 +55,13 @@ class _LyricsScreenState extends State<LyricsScreen> {
   /// rimette appena il video suona.
   bool _mutedToStart = false;
 
+  /// Sottotitoli di YouTube già tolti dal video.
+  bool _captionsOff = false;
+
   /// Video nascosto (occhio chiuso): il player continua a suonare ma quasi
   /// non occupa spazio, così il testo ha più posto e niente distrae.
-  bool _videoHidden = false;
+  /// All'inizio è nascosto: chi vuole vedere il video lo apre con l'occhio.
+  bool _videoHidden = true;
 
   /// Velocità disponibili: oltre lo 0.75× la voce inizia a suonare innaturale.
   static const _speeds = [1.0, 0.85, 0.75];
@@ -65,14 +73,30 @@ class _LyricsScreenState extends State<LyricsScreen> {
     _player = YoutubePlayerController.fromVideoId(
       videoId: widget.song.youtubeId,
       autoPlay: true,
+      // Sempre dall'inizio: YouTube a volte riprende da dove si era
+      // lasciato, e si perderebbero l'intro e il conto alla rovescia.
+      startSeconds: 0,
       params: const YoutubePlayerParams(
         showControls: false,
         showFullscreenButton: false,
         playsInline: true,
+        // Niente sottotitoli né annotazioni dentro il video: il testo è
+        // già sotto, a tempo e tradotto.
+        enableCaption: false,
+        showVideoAnnotations: false,
       ),
     );
     _player.listen((v) {
       final playing = v.playerState == PlayerState.playing;
+      if (playing && !_captionsOff) {
+        // YouTube a volte accende i sottotitoli da solo (es. se la lingua
+        // del telefono è diversa da quella del video): li si scarica.
+        _captionsOff = true;
+        _player.webViewController.runJavaScript(
+          'try { player.unloadModule("captions"); player.unloadModule("cc"); }'
+          ' catch (e) {}',
+        );
+      }
       if (playing && _mutedToStart) {
         _mutedToStart = false;
         _player.unMute();
@@ -272,7 +296,23 @@ class _LyricsScreenState extends State<LyricsScreen> {
       }
     }
     if (mounted && (wait != null || _wait != null)) {
-      setState(() => _wait = wait);
+      // Il conto alla rovescia è finito (non si è saltato avanti): per un
+      // istante compare il logo, come un "via!".
+      final countdownDone =
+          wait == null &&
+          _wait != null &&
+          _wait!.remaining <= const Duration(seconds: 3) &&
+          pos >= _wait!.end &&
+          pos < _wait!.end + const Duration(seconds: 1);
+      setState(() {
+        _wait = wait;
+        if (countdownDone) _go = true;
+      });
+      if (countdownDone) {
+        Timer(const Duration(milliseconds: 900), () {
+          if (mounted) setState(() => _go = false);
+        });
+      }
     }
   }
 
@@ -370,6 +410,13 @@ class _LyricsScreenState extends State<LyricsScreen> {
                       left: 20,
                       right: 20,
                       child: _WaitIndicator(wait),
+                    ),
+                  if (_go && _wait == null)
+                    const Positioned(
+                      top: 16,
+                      left: 0,
+                      right: 0,
+                      child: Center(child: _GoLogo()),
                     ),
                 ],
               ),
@@ -510,6 +557,33 @@ class _LyricsScreenState extends State<LyricsScreen> {
   }
 }
 
+/// Il logo di TapeTalk che appare con un piccolo salto dopo 3 - 2 - 1.
+class _GoLogo extends StatelessWidget {
+  const _GoLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    final purple = Theme.of(context).colorScheme.primary;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.5, end: 1),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutBack,
+      builder: (context, scale, child) =>
+          Transform.scale(scale: scale, child: child),
+      child: Container(
+        width: 96,
+        height: 96,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: purple,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: MouthLogo(size: 72, color: Colors.black, background: purple),
+      ),
+    );
+  }
+}
+
 class _Wait {
   final Duration start;
   final Duration end;
@@ -605,19 +679,27 @@ class _SmallControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 72,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton.filledTonal(
-            iconSize: 26,
-            icon: Icon(icon),
-            onPressed: onPressed,
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        ],
+    // Si può toccare anche la scritta sotto, non solo l'icona.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onPressed,
+      child: SizedBox(
+        width: 72,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton.filledTonal(
+              iconSize: 26,
+              icon: Icon(icon),
+              onPressed: onPressed,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
+        ),
       ),
     );
   }
