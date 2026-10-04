@@ -48,15 +48,19 @@ flowchart LR
 
 ## Features
 
-- **My playlist** (*My favorites*): everyone builds their own playlist, saved
-  on the phone. When the list is empty, the app invites you to create one.
+- **My playlist** (*My favorites*): everyone builds their own playlists,
+  saved on the phone. When the list is empty, the app invites you to create one.
 - **Search for new songs** by title or artist and add them with the heart.
   Only songs with synced lyrics are shown; the right YouTube video is picked
   by matching the song's duration.
-- **Bar fixed at the bottom of the playlist** with the TapeTalk logo, the
-  number of songs, an **Import** button (Spotify or Shazam) and the purple
-  **Add songs** button, always visible while scrolling (modelled on the
-  mobile bar of roomee.dk).
+- **Bar fixed at the bottom of the playlist** with the purple **Add songs**
+  button and the **Import** button (Spotify or Shazam), always visible while
+  scrolling (modelled on the mobile bar of roomee.dk).
+- **Several playlists**: the menu at the top right manages them, in levels.
+  *Playlists* opens the list to switch from one to another or create a new
+  one; then *Rename*, *Clear* (remove all songs) and *Delete* the open
+  playlist, with confirmation. The heart, the search and the import work on
+  the open playlist.
 - **Remove songs** from the playlist by swiping them to the left (or with
   the heart): a dialog asks for confirmation, and **Undo** puts them back.
   Removing a song from its own screen takes you back to the playlist.
@@ -124,6 +128,7 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.12.0 | Several playlists with a menu to switch, create, rename, clear and delete them; simpler bottom bar |
 | 1.11.1 | Import button moved into the bottom bar |
 | 1.11.0 | Fixed bottom bar in the playlist with the Add songs button |
 | 1.10.2 | Import a plain *Artist - Title* list; retries when LRCLIB is busy; better title and accent matching |

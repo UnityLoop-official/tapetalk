@@ -145,57 +145,186 @@ class FavoritesScreen extends StatelessWidget {
       context,
     ).push(MaterialPageRoute(builder: (_) => const CatalogScreen()));
     return ValueListenableBuilder(
-      valueListenable: FavoritesStore.songs,
-      builder: (context, songs, _) => Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          title: const Text('My favorites'),
-          actions: [
-            IconButton(
-              tooltip: 'Import a playlist',
-              icon: const Icon(Icons.playlist_add),
-              onPressed: () => _openImport(context),
-            ),
-          ],
-        ),
-        // Barra fissa in basso, come quella del sito di Roomee sul telefono.
-        bottomNavigationBar: songs.isEmpty
-            ? null
-            : _PlaylistBar(
-                songCount: songs.length,
-                onAdd: openCatalog,
-                onImport: () => _openImport(context),
-              ),
-        body: songs.isEmpty
-            ? _EmptyPlaylist(onCreate: openCatalog)
-            : ListView.separated(
-                padding: const EdgeInsets.only(bottom: 8),
-                itemCount: songs.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (context, i) => _RemovableSongTile(song: songs[i]),
-              ),
-      ),
+      valueListenable: FavoritesStore.playlists,
+      builder: (context, _, _) {
+        final playlist = FavoritesStore.current;
+        final songs = playlist.songs;
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            title: Text(playlist.name),
+            actions: const [_PlaylistMenu()],
+          ),
+          // Barra fissa in basso, come quella del sito di Roomee sul telefono.
+          bottomNavigationBar: songs.isEmpty
+              ? null
+              : _PlaylistBar(
+                  onAdd: openCatalog,
+                  onImport: () => _openImport(context),
+                ),
+          body: songs.isEmpty
+              ? _EmptyPlaylist(onCreate: openCatalog)
+              : ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  itemCount: songs.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, i) =>
+                      _RemovableSongTile(song: songs[i]),
+                ),
+        );
+      },
     );
   }
 }
 
+/// Menu in alto a destra per gestire le playlist, a livelli: "Playlists"
+/// apre l'elenco per passare da una all'altra o crearne una nuova; poi
+/// rinominare, svuotare o eliminare quella aperta.
+class _PlaylistMenu extends StatelessWidget {
+  const _PlaylistMenu();
+
+  @override
+  Widget build(BuildContext context) {
+    // Si ricostruisce a ogni cambio, così parla sempre della playlist aperta.
+    return ValueListenableBuilder(
+      valueListenable: FavoritesStore.playlists,
+      builder: (context, _, _) => _menu(context, FavoritesStore.current),
+    );
+  }
+
+  Widget _menu(BuildContext context, Playlist playlist) {
+    return MenuAnchor(
+      builder: (context, menu, _) => IconButton(
+        tooltip: 'Manage playlists',
+        icon: const Icon(Icons.more_vert),
+        onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+      ),
+      menuChildren: [
+        SubmenuButton(
+          leadingIcon: const Icon(Icons.queue_music),
+          menuChildren: [
+            for (final p in FavoritesStore.playlists.value)
+              MenuItemButton(
+                leadingIcon: Icon(
+                  p.id == playlist.id ? Icons.check : Icons.queue_music,
+                ),
+                onPressed: () => FavoritesStore.open(p.id),
+                child: Text('${p.name} (${p.songs.length})'),
+              ),
+            const Divider(height: 1),
+            MenuItemButton(
+              leadingIcon: const Icon(Icons.add),
+              onPressed: () async {
+                final name = await _askName(context, 'New playlist', '');
+                if (name != null) await FavoritesStore.create(name);
+              },
+              child: const Text('New playlist…'),
+            ),
+          ],
+          child: const Text('Playlists'),
+        ),
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.edit),
+          onPressed: () async {
+            final name = await _askName(
+              context,
+              'Rename playlist',
+              playlist.name,
+            );
+            if (name != null) await FavoritesStore.rename(name);
+          },
+          child: const Text('Rename playlist…'),
+        ),
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.clear_all),
+          onPressed: playlist.songs.isEmpty
+              ? null
+              : () async {
+                  final ok = await _confirm(
+                    context,
+                    icon: Icons.clear_all,
+                    title: 'Clear playlist?',
+                    message:
+                        'All ${playlist.songs.length} songs will be removed '
+                        'from "${playlist.name}". The playlist stays.',
+                    action: 'Clear',
+                  );
+                  if (ok) await FavoritesStore.clear();
+                },
+          child: const Text('Clear playlist'),
+        ),
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.delete, color: Colors.redAccent),
+          onPressed: () async {
+            final ok = await _confirm(
+              context,
+              icon: Icons.delete,
+              title: 'Delete playlist?',
+              message:
+                  '"${playlist.name}" and its ${playlist.songs.length} songs '
+                  'will be deleted.',
+              action: 'Delete',
+            );
+            if (ok) await FavoritesStore.deleteCurrent();
+          },
+          child: const Text(
+            'Delete playlist',
+            style: TextStyle(color: Colors.redAccent),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Chiede il nome di una playlist; null se si annulla o si lascia vuoto.
+Future<String?> _askName(
+  BuildContext context,
+  String title,
+  String initial,
+) async {
+  final controller = TextEditingController(text: initial);
+  final name = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: const InputDecoration(hintText: 'Playlist name'),
+        onSubmitted: (v) => Navigator.of(context).pop(v),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(controller.text),
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  final trimmed = name?.trim() ?? '';
+  return trimmed.isEmpty ? null : trimmed;
+}
+
 /// Barra fissa in basso, sul modello di quella di roomee.dk sul telefono:
-/// logo in un quadratino, nome e sottotitolo, pulsanti a pillola a destra
-/// (importare da Spotify o Shazam e aggiungere canzoni).
+/// due pulsanti a pillola, aggiungere canzoni e importare da Spotify o
+/// Shazam.
 class _PlaylistBar extends StatelessWidget {
-  final int songCount;
   final VoidCallback onAdd;
   final VoidCallback onImport;
 
-  const _PlaylistBar({
-    required this.songCount,
-    required this.onAdd,
-    required this.onImport,
-  });
+  const _PlaylistBar({required this.onAdd, required this.onImport});
 
   @override
   Widget build(BuildContext context) {
     final purple = Theme.of(context).colorScheme.primary;
+    const textStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w700);
+    const padding = EdgeInsets.symmetric(vertical: 12);
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Container(
@@ -214,78 +343,32 @@ class _PlaylistBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: purple,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: MouthLogo(
-                size: 30,
-                color: Colors.black,
-                background: purple,
-              ),
-            ),
-            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'TapeTalk',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    songCount == 1 ? '1 song' : '$songCount songs',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.black54, fontSize: 11),
-                  ),
-                ],
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: purple,
+                  foregroundColor: Colors.black,
+                  padding: padding,
+                  textStyle: textStyle,
+                ),
+                icon: const Icon(Icons.add, size: 22),
+                label: const Text('Add songs'),
+                onPressed: onAdd,
               ),
             ),
-            const SizedBox(width: 6),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: purple.withValues(alpha: 0.35),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: purple.withValues(alpha: 0.35),
+                  foregroundColor: Colors.black,
+                  padding: padding,
+                  textStyle: textStyle,
                 ),
-                textStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
+                icon: const Icon(Icons.playlist_add, size: 22),
+                label: const Text('Import'),
+                onPressed: onImport,
               ),
-              icon: const Icon(Icons.playlist_add, size: 20),
-              label: const Text('Import'),
-              onPressed: onImport,
-            ),
-            const SizedBox(width: 6),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: purple,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text('Add songs'),
-              onPressed: onAdd,
             ),
           ],
         ),
@@ -356,7 +439,9 @@ class _RemovableSongTile extends StatelessWidget {
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text('"${song.title}" removed from favorites'),
+              content: Text(
+                '"${song.title}" removed from "${FavoritesStore.current.name}"',
+              ),
               action: SnackBarAction(
                 label: 'Undo',
                 onPressed: () => FavoritesStore.insert(song, index),
@@ -509,16 +594,34 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
 /// La canzone pronta da suonare: se viene dalla ricerca cerca il video,
 /// con una rotella mentre aspetta. Null se il video non si trova.
-/// Chiede conferma prima di togliere una canzone dai preferiti, con una
+/// Chiede conferma prima di togliere una canzone dalla playlist aperta, con una
 /// finestra grande al centro: si toglie solo con "Remove".
-Future<bool> _confirmRemove(BuildContext context, Song song) async {
+Future<bool> _confirmRemove(BuildContext context, Song song) => _confirm(
+  context,
+  icon: Icons.delete,
+  title: 'Remove from playlist?',
+  message:
+      '"${song.title}" by ${song.artist} will be removed from '
+      '"${FavoritesStore.current.name}".',
+  action: 'Remove',
+);
+
+/// Finestra di conferma grande al centro, con il pulsante rosso [action]:
+/// true solo se si preme quello.
+Future<bool> _confirm(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  required String message,
+  required String action,
+}) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      icon: const Icon(Icons.delete, size: 40, color: Colors.redAccent),
-      title: const Text('Remove from favorites?'),
+      icon: Icon(icon, size: 40, color: Colors.redAccent),
+      title: Text(title),
       content: Text(
-        '"${song.title}" by ${song.artist} will be removed from your playlist.',
+        message,
         textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 17),
       ),
@@ -534,7 +637,7 @@ Future<bool> _confirmRemove(BuildContext context, Song song) async {
             foregroundColor: Colors.white,
           ),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Remove', style: TextStyle(fontSize: 17)),
+          child: Text(action, style: const TextStyle(fontSize: 17)),
         ),
       ],
     ),
@@ -615,7 +718,7 @@ class FavoriteButton extends StatelessWidget {
       builder: (context, _, _) {
         final isFavorite = FavoritesStore.contains(song);
         return IconButton(
-          tooltip: isFavorite ? 'Remove from favorites' : 'Add to favorites',
+          tooltip: isFavorite ? 'Remove from playlist' : 'Add to playlist',
           icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
           color: isFavorite ? Theme.of(context).colorScheme.primary : null,
           onPressed: () async {
