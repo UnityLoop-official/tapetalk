@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
@@ -159,6 +160,15 @@ class _LyricsScreenState extends State<LyricsScreen> {
   static const _speeds = [1.0, 0.85, 0.75];
   int _speedIndex = 0;
 
+  /// Voce del telefono che legge una frase, parlata e non cantata.
+  final _tts = FlutterTts();
+
+  /// Riga che si sta leggendo (il suo altoparlante è acceso).
+  int? _speaking;
+
+  /// La canzone l'ha fermata la lettura: finita la frase, riparte.
+  bool _pausedForSpeech = false;
+
   @override
   void initState() {
     super.initState();
@@ -201,6 +211,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
     );
     _loadLyrics();
     _loadUserOffset();
+    _initTts();
     _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
   }
 
@@ -222,6 +233,58 @@ class _LyricsScreenState extends State<LyricsScreen> {
       await _player.mute();
     }
     await _player.playVideo();
+  }
+
+  Future<void> _initTts() async {
+    await _tts.setLanguage('en-US');
+    // Un po' più lenta del normale (0.5 su Android): si capisce ogni parola.
+    await _tts.setSpeechRate(0.4);
+    _tts.setCompletionHandler(_speechDone);
+    _tts.setCancelHandler(() {
+      if (mounted) setState(() => _speaking = null);
+    });
+    _tts.setErrorHandler((_) => _speechDone());
+  }
+
+  void _speechDone() {
+    if (!mounted) return;
+    setState(() => _speaking = null);
+    if (_pausedForSpeech) {
+      _pausedForSpeech = false;
+      _player.playVideo();
+    }
+  }
+
+  /// Legge la riga [i]: ferma la canzone, dice la frase e la fa ripartire.
+  /// Toccando di nuovo l'altoparlante acceso si smette di leggere.
+  Future<void> _speak(int i) async {
+    if (_speaking == i) {
+      await _tts.stop();
+      _speechDone();
+      return;
+    }
+    if (_playing && !_pausedForSpeech) {
+      _pausedForSpeech = true;
+      _player.pauseVideo();
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    await _tts.stop();
+    if (await _tts.isLanguageAvailable('en-US') != true) {
+      _speechDone();
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No English voice on this phone. Install it in Settings › '
+              'Text-to-speech.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    setState(() => _speaking = i);
+    await _tts.speak(_lines![i].english);
   }
 
   Future<void> _loadLyrics() async {
@@ -414,6 +477,8 @@ class _LyricsScreenState extends State<LyricsScreen> {
   Future<void> _jumpTo(LyricLine line) async {
     final seconds = line.time.inMilliseconds / 1000 + _offset - 0.3;
     _userPaused = false;
+    _pausedForSpeech = false;
+    await _tts.stop();
     await _player.seekTo(
       seconds: seconds < 0 ? 0 : seconds,
       allowSeekAhead: true,
@@ -423,10 +488,20 @@ class _LyricsScreenState extends State<LyricsScreen> {
 
   void _pause() {
     _userPaused = true;
+    _pausedForSpeech = false;
     _player.pauseVideo();
   }
 
+  /// Play a mano: la voce, se stava leggendo, si zittisce.
+  void _play() {
+    _pausedForSpeech = false;
+    _tts.stop();
+    _player.playVideo();
+  }
+
   Future<void> _restart() async {
+    _pausedForSpeech = false;
+    await _tts.stop();
     await _player.seekTo(seconds: 0, allowSeekAhead: true);
     await _player.playVideo();
     if (!mounted) return;
@@ -459,6 +534,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
   void dispose() {
     _ticker?.cancel();
     _startWatchdog?.cancel();
+    _tts.stop();
     _player.close();
     _scroll.dispose();
     super.dispose();
@@ -548,7 +624,7 @@ class _LyricsScreenState extends State<LyricsScreen> {
                   IconButton.filled(
                     iconSize: 48,
                     icon: Icon(_playing ? Icons.pause : Icons.play_arrow),
-                    onPressed: () => _playing ? _pause() : _player.playVideo(),
+                    onPressed: () => _playing ? _pause() : _play(),
                   ),
                   const SizedBox(width: 32),
                   _SmallControl(
@@ -639,33 +715,53 @@ class _LyricsScreenState extends State<LyricsScreen> {
               opacity: active ? 1 : 0.35,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Column(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 300),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: active ? 26 : 20,
-                        fontWeight: active
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                      child: active
-                          ? _karaokeText(line.english)
-                          : Text(line.english),
-                    ),
-                    if (line.italian.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          line.italian,
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 16,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 300),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: active ? 26 : 20,
+                              fontWeight: active
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                            child: active
+                                ? _karaokeText(line.english)
+                                : Text(line.english),
                           ),
-                        ),
+                          if (line.italian.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                line.italian,
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
+                    ),
+                    // Legge la frase in inglese, parlata.
+                    IconButton(
+                      tooltip: 'Say it',
+                      color: _speaking == i
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.white70,
+                      icon: Icon(
+                        _speaking == i
+                            ? Icons.volume_up
+                            : Icons.volume_up_outlined,
+                      ),
+                      onPressed: () => _speak(i),
+                    ),
                   ],
                 ),
               ),

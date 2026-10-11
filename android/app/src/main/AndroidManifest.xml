@@ -41,6 +41,10 @@
         <!-- App da cui si importano le playlist: TapeTalk controlla se ci sono. -->
         <package android:name="com.spotify.music"/>
         <package android:name="com.shazam.android"/>
+        <!-- Voce del telefono che legge le frasi (altoparlante sul testo). -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

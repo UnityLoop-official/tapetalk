@@ -77,6 +77,10 @@ flowchart LR
   starts. The heart in the top bar adds or removes it from the playlist.
 - **Tap a line to hear it again**: the song jumps to that line, handy for
   repeating a hard phrase.
+- **Hear a line spoken**: the speaker next to every line reads it in
+  English with the phone's voice, slowly and without music. The song pauses
+  while it speaks and then carries on; tap the speaker again to stop. If the
+  phone has no English voice, the app says where to install it.
 - **Lyrics in time with the music**: the current line is highlighted and
   **each word turns purple as it is sung**. Line timings come from LRCLIB,
   choosing the version of the lyrics whose duration matches the video. When
@@ -122,6 +126,7 @@ Italian.
 | Line and word timings | YouTube captions of the video (written or automatic), when available |
 | Playlist import | Spotify's public embed page for the playlist; Shazam's public song pages |
 | Translations | [MyMemory](https://mymemory.translated.net) |
+| Spoken lines | The phone's own text-to-speech voice, via [flutter_tts](https://pub.dev/packages/flutter_tts) (works offline) |
 | Covers | iTunes Search API |
 
 > ⚠️ Experimental project for personal use. Song lyrics and their
@@ -147,6 +152,7 @@ The version number is in `pubspec.yaml` and every version has a git tag.
 
 | Version | What's new |
 |---|---|
+| 1.17.0 | Speaker next to every line: hear it spoken in English, without music |
 | 1.16.2 | The speech bubble is drawn in front of the mouth, so its tip shows |
 | 1.16.1 | Bigger logo in the app icon |
 | 1.16.0 | Lyrics timing adjustment, saved for each song |
